@@ -1,4 +1,4 @@
-# Imports
+.# Imports
 import datetime
 import logging
 import os
@@ -74,9 +74,9 @@ def clone_pr_repo(job_obj, workdir):
         [f'git clone -b {branch} {git_url}', repo_dir_str],
         ['git submodule update --init --recursive',
          f'{repo_dir_str}/{repo_name}'],
-        ['git config user.email "brian.curtis@noaa.gov"',
+        ['git config user.email "venita.hagerty@noaa.gov"',
          f'{repo_dir_str}/{repo_name}'],
-        ['git config user.name "Brian Curtis"',
+        ['git config user.name "Venita Hagerty"',
          f'{repo_dir_str}/{repo_name}']
     ]
 
