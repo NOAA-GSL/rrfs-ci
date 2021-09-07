@@ -211,6 +211,7 @@ class Job:
             logger.critical(f'STDOUT: {[item for item in out if not None]}')
             logger.critical(f'STDERR: {[eitem for eitem in err if not None]}')
 
+            
 def setup_env():
     logger = logging.getLogger('SETUP')
 
@@ -231,8 +232,8 @@ def setup_env():
         machine = 'cheyenne'
         os.environ['ACCNR'] = 'P48503002'
     else:
-        raise KeyError(f'Hostname: {hostname} does not match '\
-                        'for a supported system. Exiting.')
+        raise KeyError(f'Hostname: {hostname} does not match '
+                       'for a supported system. Exiting.')
 
     # Build dictionary of GitHub repositories to check
     # from config file. Workflow repo matched to app repo
