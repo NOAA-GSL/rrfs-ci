@@ -2,10 +2,10 @@
 Revising this Python program to use for WE2E testing. It is based on:
 Automation of UFS Regression Testing for ufs-weather-model
 
-This script automates the process of UFS CI for 
+This script automates the process of UFS CI for
 code managers at NOAA-EMC
 
-This script should be started through start_ci_auto.sh so that 
+This script should be started through start_ci_auto.sh so that
 env vars and Python paths are set up prior to start.
 """
 from github import Github as gh
@@ -160,7 +160,7 @@ class Job:
                                           stderr=subprocess.STDOUT)
                 output.wait()
             except Exception as e:
-                self.job_failed(logger, 'subprocess.Popen')
+                self.job_failed(logger, 'subprocess.Popen', exception=e)
             else:
                 try:
                     out, err = output.communicate()
@@ -251,7 +251,7 @@ def setup_env():
                 'app_name': config[ci_repo]['app_name'],
                 'app_address': config[ci_repo]['app_address'],
                 'app_branch': config[ci_repo]['app_branch']
-            } 
+            }
             repo_dict.append(one_repo)
 
     # Approved Actions
@@ -283,7 +283,7 @@ def main():
     logger.info('Getting all pull requests, '
                 'labels and actions applicable to this machine.')
     jobs = get_preqs_with_actions(repos, machine,
-                                       ghinterface_obj, actions)
+                                  ghinterface_obj, actions)
     [job.run() for job in jobs]
 
     logger.info('Script Finished')
