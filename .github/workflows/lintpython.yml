@@ -1,4 +1,4 @@
-name: Test METdatadb
+name: Lint Python
 # From Hank and George
 on:
   push:
