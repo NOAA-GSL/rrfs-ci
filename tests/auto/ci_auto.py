@@ -84,20 +84,24 @@ def get_preqs_with_actions(repos, machine, ghinterface_obj, actions):
         and its machine label and action '''
     logger = logging.getLogger('GET_PREQS_WITH_ACTIONS')
     logger.info('Getting Pull Requests with Actions')
-    gh_preqs = [ghinterface_obj.client.get_repo(repo['address'])
-                .get_pulls(state='open', sort='created', base=repo['base'])
-                for repo in repos]
-    each_pr = [preq for gh_preq in gh_preqs for preq in gh_preq]
-    preq_labels = [{'preq': pr, 'label': label} for pr in each_pr
-                   for label in pr.get_labels()]
-
     jobs = []
-    for pr_label in preq_labels:
-        compiler, match = set_action_from_label(machine, actions,
-                                                pr_label['label'])
-        if match:
-            pr_label['action'] = match
-            jobs.append(Job(pr_label.copy(), ghinterface_obj, machine, compiler))
+    for repo in repos:
+        gh_preqs = [ghinterface_obj.client.get_repo(repo['address'])
+                                   .get_pulls(state='open', sort='created', 
+                                              base=repo['base'])]
+
+        each_pr = [preq for gh_preq in gh_preqs for preq in gh_preq]
+        preq_labels = [{'preq': pr, 'label': label} for pr in each_pr
+                       for label in pr.get_labels()]
+    
+
+        for pr_label in preq_labels:
+            compiler, match = set_action_from_label(machine, actions,
+                                                    pr_label['label'])
+            if match:
+                pr_label['action'] = match
+                jobs.append(Job(pr_label.copy(), ghinterface_obj, 
+                                machine, compiler, repo))
 
     return jobs
 
@@ -119,7 +123,7 @@ class Job:
         provided by the bash script
     '''
 
-    def __init__(self, preq_dict, ghinterface_obj, machine, compiler):
+    def __init__(self, preq_dict, ghinterface_obj, machine, compiler, repo):
         self.logger = logging.getLogger('JOB')
         self.preq_dict = preq_dict
         self.job_mod = importlib.import_module(
@@ -127,6 +131,7 @@ class Job:
         self.ghinterface_obj = ghinterface_obj
         self.machine = machine
         self.compiler = compiler
+        self.repo = repo
         self.comment_text = ''
         self.failed_tests = []
 
@@ -136,7 +141,7 @@ class Job:
     def remove_pr_label(self):
         ''' Removes the PR label that initiated the job run from PR '''
         self.logger.info(f'Removing Label: {self.preq_dict["label"]}')
-        self.preq_dict['preq'].remove_from_labels(self.preq_dict['label'])
+        # self.preq_dict['preq'].remove_from_labels(self.preq_dict['label'])
 
     def check_label_before_job_start(self):
         # LETS Check the label still exists before the start of the job in the
@@ -283,7 +288,7 @@ def main():
     logger.info('Getting all pull requests, '
                 'labels and actions applicable to this machine.')
     jobs = get_preqs_with_actions(repos, machine,
-                                       ghinterface_obj, actions)
+                                  ghinterface_obj, actions)
     [job.run() for job in jobs]
 
     logger.info('Script Finished')

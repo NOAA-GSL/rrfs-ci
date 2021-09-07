@@ -100,8 +100,8 @@ def remove_pr_data(job_obj, pr_repo_loc, repo_dir_str, rt_dir):
 def clone_pr_repo(job_obj, workdir):
     ''' clone the GitHub pull request repo, via command line '''
     logger = logging.getLogger('BUILD/CLONE_PR_REPO')
-    repo_name = 'ufs-community/ufs-srweather-app'
-    branch = 'develop'
+    repo_name = job_obj.repo["app_address"]
+    branch = job_obj.repo["app_branch"]
     git_url = f'https://${{ghapitoken}}@github.com/{repo_name}'
     logger.debug(f'GIT URL: {git_url}')
     logger.info('Starting repo clone')
@@ -134,6 +134,8 @@ def clone_pr_repo(job_obj, workdir):
             config.set(updated_section, 'hash',  
                        job_obj.preq_dict['preq'].head.sha) 
             config.set(updated_section, 'repo_url', new_repo)
+            config.clear(updated_section, 'branch')
+            config.clear(updated_section, 'tag')
             # open existing Externals.cfg to update it
             with open(file_path, 'w') as f:
                 config.write(f)
