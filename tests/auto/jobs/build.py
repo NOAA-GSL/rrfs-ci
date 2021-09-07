@@ -39,7 +39,7 @@ def set_directories(job_obj):
         workdir = '/work/noaa/nems/emc.nemspara/autort/pr'
         blstore = '/work/noaa/nems/emc.nemspara/RT/NEMSfv3gfs'
         rtbldir = '/work/noaa/stmp/bcurtis/stmp/bcurtis/FV3_RT/'\
-                 f'REGRESSION_TEST_{job_obj.compiler.upper()}'
+                  f'REGRESSION_TEST_{job_obj.compiler.upper()}'
     elif job_obj.machine == 'cheyenne':
         workdir = '/glade/scratch/dtcufsrt/autort/tests/auto/pr'
         blstore = '/glade/p/ral/jntp/GMTB/ufs-weather-model/RT/NEMSfv3gfs'
@@ -114,7 +114,7 @@ def clone_pr_repo(job_obj, workdir):
         [f'mkdir -p "{repo_dir_str}"', os.getcwd()],
         [f'git clone -b {branch} {git_url}', repo_dir_str]]
     job_obj.run_commands(logger, create_repo_commands)
-    
+
     # Set up configparser to read and update Externals.cfg ini/config file
     # to change one repo to match the head of the code in the PR
     config = config_parser()
@@ -138,7 +138,7 @@ def clone_pr_repo(job_obj, workdir):
                 config.write(f)
         else:
             logger.info('No section {updated_section} in Externals.cfg')
-            
+
     # call manage externals with new Externals.cfg to get other repos
     logger.info('Starting manage externals')
     create_repo_commands = [['./manage_externals/checkout_externals',
@@ -210,7 +210,7 @@ def process_logfile(job_obj, ci_log):
             logger.info('Build failed')
         else:
             logger.info('Build was successful')
-        return not build_failed 
+        return not build_failed
     else:
         logger.critical(f'Could not find {job_obj.machine}'
                         f'.{job_obj.compiler} '
