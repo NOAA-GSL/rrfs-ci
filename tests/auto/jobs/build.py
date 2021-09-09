@@ -25,9 +25,7 @@ def run(job_obj):
 def set_directories(job_obj):
     logger = logging.getLogger('BUILD/SET_DIRECTORIES')
     if job_obj.machine == 'hera':
-        # for testing on laptop
-        # workdir = '/scratch2/BMC/zrtrr/rrfs_ci/autoci/pr'
-        workdir = '/Users/venita.hagerty/autort/pr'
+        workdir = '/scratch2/BMC/zrtrr/rrfs_ci/autoci/pr'
 
     elif job_obj.machine == 'jet':
         workdir = '/lfs4/HFIP/h-nems/emc.nemspara/autort/pr'

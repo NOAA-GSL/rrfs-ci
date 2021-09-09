@@ -35,8 +35,7 @@ class GHInterface:
     def __init__(self):
         self.logger = logging.getLogger('GHINTERFACE')
 
-        # changed for testing
-        filename = '/Users/venita.hagerty/autort/tests/auto/accesstoken'
+        filename = 'accesstoken'
 
         if os.path.exists(filename):
             if oct(os.stat(filename).st_mode)[-3:] != 600:
@@ -220,9 +219,7 @@ class Job:
 def setup_env():
     logger = logging.getLogger('SETUP')
 
-    # set for testing
-    # hostname = os.getenv('HOSTNAME')
-    hostname = 'hfe01'
+    hostname = os.getenv('HOSTNAME')
     if bool(re.match(re.compile('hfe.+'), hostname)):
         machine = 'hera'
     elif bool(re.match(re.compile('hecflow.+'), hostname)):
