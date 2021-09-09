@@ -25,7 +25,10 @@ def run(job_obj):
 def set_directories(job_obj):
     logger = logging.getLogger('BUILD/SET_DIRECTORIES')
     if job_obj.machine == 'hera':
-        workdir = '/scratch2/BMC/zrtrr/rrfs_ci/autoci/pr'
+        # for testing on laptop
+        # workdir = '/scratch2/BMC/zrtrr/rrfs_ci/autoci/pr'
+        workdir = '/Users/venita.hagerty/autort/pr'
+
     elif job_obj.machine == 'jet':
         workdir = '/lfs4/HFIP/h-nems/emc.nemspara/autort/pr'
         blstore = '/lfs4/HFIP/h-nems/emc.nemspara/RT/NEMSfv3gfs/'
@@ -103,7 +106,8 @@ def clone_pr_repo(job_obj, workdir):
     repo_name = job_obj.repo["app_address"]
     branch = job_obj.repo["app_branch"]
     git_url = f'https://${{ghapitoken}}@github.com/{repo_name}'
-    logger.debug(f'GIT URL: {git_url}')
+    logger.info(f'GIT URL: {git_url}')
+    logger.info(f'app branch: {branch}')
     logger.info('Starting repo clone')
     repo_dir_str = f'{workdir}/'\
                    f'{str(job_obj.preq_dict["preq"].id)}/'\
@@ -126,16 +130,21 @@ def clone_pr_repo(job_obj, workdir):
     else:
         config.read(file_path)
         updated_section = job_obj.preq_dict['preq'].head.repo.name
+        logger.info(f'updated section: {updated_section}')
         new_repo = "https://github.com/" + \
             job_obj.preq_dict['preq'].head.repo.full_name
+        logger.info(f'new repo: {new_repo}')
 
         if config.has_section(updated_section):
 
             config.set(updated_section, 'hash',  
                        job_obj.preq_dict['preq'].head.sha) 
             config.set(updated_section, 'repo_url', new_repo)
-            config.clear(updated_section, 'branch')
-            config.clear(updated_section, 'tag')
+            # Can only have one of hash, branch, tag
+            if config.has_option(updated_section, 'branch'):
+                config.remove_option(updated_section, 'branch')
+            if config.has_option(updated_section, 'tag'):
+                config.remove_option(updated_section, 'tag')
             # open existing Externals.cfg to update it
             with open(file_path, 'w') as f:
                 config.write(f)
