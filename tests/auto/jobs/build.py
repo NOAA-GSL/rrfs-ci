@@ -7,6 +7,7 @@ from configparser import ConfigParser as config_parser
 
 from . import rt
 
+
 def run(job_obj):
     logger = logging.getLogger('BUILD/RUN')
     workdir = set_directories(job_obj)
@@ -214,9 +215,9 @@ def process_logfile(job_obj, ci_log):
             for line in f:
                 if fail_string in line:
                     build_failed = True
-                    job_obj.comment_text_append(f'{line.rstrip(chr(10))}')
+                    job_obj.comment_text_append(f'{line.rstrip()}')
         if build_failed:
-            job_obj.job_failed(logger, f'{job_obj.preq_dict["action"]}')
+            job_obj.send_comment_text()
             logger.info('Build failed') 
         else:
             logger.info('Build was successful') 
