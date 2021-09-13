@@ -2,10 +2,10 @@
 Revising this Python program to use for WE2E testing. It is based on:
 Automation of UFS Regression Testing for ufs-weather-model
 
-This script automates the process of UFS CI for 
+This script automates the process of UFS CI for
 code managers at NOAA-EMC
 
-This script should be started through start_ci_auto.sh so that 
+This script should be started through start_ci_auto.sh so that
 env vars and Python paths are set up prior to start.
 """
 from github import Github as gh
@@ -87,20 +87,19 @@ def get_preqs_with_actions(repos, machine, ghinterface_obj, actions):
     jobs = []
     for repo in repos:
         gh_preqs = [ghinterface_obj.client.get_repo(repo['address'])
-                                   .get_pulls(state='open', sort='created', 
+                                   .get_pulls(state='open', sort='created',
                                               base=repo['base'])]
 
         each_pr = [preq for gh_preq in gh_preqs for preq in gh_preq]
         preq_labels = [{'preq': pr, 'label': label} for pr in each_pr
                        for label in pr.get_labels()]
-    
 
         for pr_label in preq_labels:
             compiler, match = set_action_from_label(machine, actions,
                                                     pr_label['label'])
             if match:
                 pr_label['action'] = match
-                jobs.append(Job(pr_label.copy(), ghinterface_obj, 
+                jobs.append(Job(pr_label.copy(), ghinterface_obj,
                                 machine, compiler, repo))
 
     return jobs
@@ -165,7 +164,7 @@ class Job:
                                           stderr=subprocess.STDOUT)
                 output.wait()
             except Exception as e:
-                self.job_failed(logger, 'subprocess.Popen')
+                self.job_failed(logger, 'subprocess.Popen', exception=e)
             else:
                 try:
                     out, err = output.communicate()
@@ -216,6 +215,7 @@ class Job:
             logger.critical(f'STDOUT: {[item for item in out if not None]}')
             logger.critical(f'STDERR: {[eitem for eitem in err if not None]}')
 
+
 def setup_env():
     logger = logging.getLogger('SETUP')
 
@@ -236,8 +236,8 @@ def setup_env():
         machine = 'cheyenne'
         os.environ['ACCNR'] = 'P48503002'
     else:
-        raise KeyError(f'Hostname: {hostname} does not match '\
-                        'for a supported system. Exiting.')
+        raise KeyError(f'Hostname: {hostname} does not match '
+                       'for a supported system. Exiting.')
 
     # Build dictionary of GitHub repositories to check
     # from config file. Workflow repo matched to app repo
@@ -256,7 +256,7 @@ def setup_env():
                 'app_name': config[ci_repo]['app_name'],
                 'app_address': config[ci_repo]['app_address'],
                 'app_branch': config[ci_repo]['app_branch']
-            } 
+            }
             repo_dict.append(one_repo)
 
     # Approved Actions

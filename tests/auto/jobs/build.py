@@ -2,7 +2,6 @@
 import datetime
 import logging
 import os
-import sys
 from configparser import ConfigParser as config_parser
 
 from . import rt
@@ -16,7 +15,7 @@ def run(job_obj):
     os.environ['SR_WX_APP_TOP_DIR'] = pr_repo_loc
     build_script_loc = pr_repo_loc + '/test'
     log_name = 'build.out'
-    create_build_commands = [[f'./build.sh {job_obj.machine} >& {log_name}', 
+    create_build_commands = [[f'./build.sh {job_obj.machine} >& {log_name}',
                              build_script_loc]]
     logger.info('Running test build script')
     job_obj.run_commands(logger, create_build_commands)
@@ -32,22 +31,22 @@ def set_directories(job_obj):
         workdir = '/lfs4/HFIP/h-nems/emc.nemspara/autort/pr'
         blstore = '/lfs4/HFIP/h-nems/emc.nemspara/RT/NEMSfv3gfs/'
         rtbldir = '/lfs4/HFIP/h-nems/emc.nemspara/RT_BASELINE/'\
-                 f'emc.nemspara/FV3_RT/REGRESSION_TEST_{job_obj.compiler.upper()}'
+                  f'emc.nemspara/FV3_RT/REGRESSION_TEST_{job_obj.compiler.upper()}'
     elif job_obj.machine == 'gaea':
         workdir = '/lustre/f2/pdata/ncep/emc.nemspara/autort/pr'
         blstore = '/lustre/f2/pdata/ncep_shared/emc.nemspara/RT/NEMSfv3gfs'
         rtbldir = '/lustre/f2/scratch/emc.nemspara/FV3_RT/'\
-                 f'REGRESSION_TEST_{job_obj.compiler.upper()}'
+                  f'REGRESSION_TEST_{job_obj.compiler.upper()}'
     elif job_obj.machine == 'orion':
         workdir = '/work/noaa/nems/emc.nemspara/autort/pr'
         blstore = '/work/noaa/nems/emc.nemspara/RT/NEMSfv3gfs'
         rtbldir = '/work/noaa/stmp/bcurtis/stmp/bcurtis/FV3_RT/'\
-                 f'REGRESSION_TEST_{job_obj.compiler.upper()}'
+                  f'REGRESSION_TEST_{job_obj.compiler.upper()}'
     elif job_obj.machine == 'cheyenne':
         workdir = '/glade/scratch/dtcufsrt/autort/tests/auto/pr'
         blstore = '/glade/p/ral/jntp/GMTB/ufs-weather-model/RT/NEMSfv3gfs'
         rtbldir = '/glade/scratch/dtcufsrt/FV3_RT/'\
-                 f'REGRESSION_TEST_{job_obj.compiler.upper()}'
+                  f'REGRESSION_TEST_{job_obj.compiler.upper()}'
     else:
         logger.critical(f'Machine {job_obj.machine} is not supported for this job')
         raise KeyError
@@ -116,9 +115,9 @@ def clone_pr_repo(job_obj, workdir):
 
     create_repo_commands = [
         [f'mkdir -p "{repo_dir_str}"', os.getcwd()],
-        [f'git clone -b {branch} {git_url}', repo_dir_str]]  
+        [f'git clone -b {branch} {git_url}', repo_dir_str]]
     job_obj.run_commands(logger, create_repo_commands)
-    
+
     # Set up configparser to read and update Externals.cfg ini/config file
     # to change one repo to match the head of the code in the PR
     config = config_parser()
@@ -136,8 +135,8 @@ def clone_pr_repo(job_obj, workdir):
 
         if config.has_section(updated_section):
 
-            config.set(updated_section, 'hash',  
-                       job_obj.preq_dict['preq'].head.sha) 
+            config.set(updated_section, 'hash',
+                       job_obj.preq_dict['preq'].head.sha)
             config.set(updated_section, 'repo_url', new_repo)
             # Can only have one of hash, branch, tag
             if config.has_option(updated_section, 'branch'):
@@ -149,10 +148,10 @@ def clone_pr_repo(job_obj, workdir):
                 config.write(f)
         else:
             logger.info('No section {updated_section} in Externals.cfg')
-            
+
     # call manage externals with new Externals.cfg to get other repos
     logger.info('Starting manage externals')
-    create_repo_commands = [['./manage_externals/checkout_externals', 
+    create_repo_commands = [['./manage_externals/checkout_externals',
                              pr_repo_loc]]
 
     job_obj.run_commands(logger, create_repo_commands)
@@ -218,10 +217,10 @@ def process_logfile(job_obj, ci_log):
                     job_obj.comment_text_append(f'{line.rstrip()}')
         if build_failed:
             job_obj.send_comment_text()
-            logger.info('Build failed') 
+            logger.info('Build failed')
         else:
-            logger.info('Build was successful') 
-        return not build_failed 
+            logger.info('Build was successful')
+        return not build_failed
     else:
         logger.critical(f'Could not find {job_obj.machine}'
                         f'.{job_obj.compiler} '
