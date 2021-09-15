@@ -4,8 +4,6 @@ import logging
 import os
 from configparser import ConfigParser as config_parser
 
-from . import rt
-
 
 def run(job_obj):
     logger = logging.getLogger('BUILD/RUN')
@@ -19,7 +17,15 @@ def run(job_obj):
                              build_script_loc]]
     logger.info('Running test build script')
     job_obj.run_commands(logger, create_build_commands)
-    post_process(job_obj, build_script_loc, log_name)
+    build_success = post_process(job_obj, build_script_loc, log_name)
+    logger.info('After post-processing')
+    logger.info(f'Action: {job_obj.preq_dict["action"]}')
+    if build_success and (job_obj.preq_dict["action"] == 'WE'):
+        logger.info('Running end to end test')
+        expt_script_loc = pr_repo_loc + '/regional_workflow/tests/WE2E'
+        create_expt_commands = [[f'./end_to_end_tests.sh {job_obj.machine} '
+                                'zrtrr', expt_script_loc]]
+        job_obj.run_commands(logger, create_expt_commands)
 
 
 def set_directories(job_obj):
@@ -29,26 +35,19 @@ def set_directories(job_obj):
 
     elif job_obj.machine == 'jet':
         workdir = '/lfs4/HFIP/h-nems/emc.nemspara/autort/pr'
-        blstore = '/lfs4/HFIP/h-nems/emc.nemspara/RT/NEMSfv3gfs/'
-        rtbldir = '/lfs4/HFIP/h-nems/emc.nemspara/RT_BASELINE/'\
-                  f'emc.nemspara/FV3_RT/REGRESSION_TEST_{job_obj.compiler.upper()}'
+
     elif job_obj.machine == 'gaea':
         workdir = '/lustre/f2/pdata/ncep/emc.nemspara/autort/pr'
-        blstore = '/lustre/f2/pdata/ncep_shared/emc.nemspara/RT/NEMSfv3gfs'
-        rtbldir = '/lustre/f2/scratch/emc.nemspara/FV3_RT/'\
-                  f'REGRESSION_TEST_{job_obj.compiler.upper()}'
+
     elif job_obj.machine == 'orion':
         workdir = '/work/noaa/nems/emc.nemspara/autort/pr'
-        blstore = '/work/noaa/nems/emc.nemspara/RT/NEMSfv3gfs'
-        rtbldir = '/work/noaa/stmp/bcurtis/stmp/bcurtis/FV3_RT/'\
-                  f'REGRESSION_TEST_{job_obj.compiler.upper()}'
+
     elif job_obj.machine == 'cheyenne':
         workdir = '/glade/scratch/dtcufsrt/autort/tests/auto/pr'
-        blstore = '/glade/p/ral/jntp/GMTB/ufs-weather-model/RT/NEMSfv3gfs'
-        rtbldir = '/glade/scratch/dtcufsrt/FV3_RT/'\
-                  f'REGRESSION_TEST_{job_obj.compiler.upper()}'
+
     else:
-        logger.critical(f'Machine {job_obj.machine} is not supported for this job')
+        logger.critical(f'Machine {job_obj.machine} id '
+                        'not supported for this job')
         raise KeyError
 
     logger.info(f'machine: {job_obj.machine}')
@@ -161,48 +160,13 @@ def clone_pr_repo(job_obj, workdir):
 
 
 def post_process(job_obj, build_script_loc, log_name):
-    logger = logging.getLogger('BUILD/POST_CHECK_LOG')
+    logger = logging.getLogger('BUILD/POST_PROCESS')
     ci_log = f'{build_script_loc}/{log_name}'
     logfile_pass = process_logfile(job_obj, ci_log)
-    if logfile_pass:
-        move_bl_command = [[f'mv {rtbldir}/* {bldir}/', pr_repo_loc]]
-        # deleted 2 lines related to orion with undefined variables
-        # job_obj.run_commands(logger, move_bl_command)
-        job_obj.comment_text_append('Baseline creation and move successful')
-        logger.info('Starting RT Job')
-        # rt.run(job_obj)
-        logger.info('Finished with RT Job')
-        # remove_pr_data(job_obj, pr_repo_loc, repo_dir_str, rt_dir)
+    logger.info('Log file was processed')
+    logger.info(f'Status of build: {logfile_pass}')
 
-
-def get_bl_date(job_obj, pr_repo_loc):
-    logger = logging.getLogger('BUILD/UPDATE_RT_SH')
-    BLDATEFOUND = False
-    with open(f'{pr_repo_loc}/tests/rt.sh', 'r') as f:
-        for line in f:
-            if 'BL_DATE=' in line:
-                logger.info('Found BL_DATE in line')
-                BLDATEFOUND = True
-                bldate = line
-                bldate = bldate.rstrip('\n')
-                bldate = bldate.replace('BL_DATE=', '')
-                bldate = bldate.strip(' ')
-                logger.info(f'bldate is "{bldate}"')
-                logger.info(f'Type bldate: {type(bldate)}')
-                bl_format = '%Y%m%d'
-                try:
-                    datetime.datetime.strptime(bldate, '%Y%m%d')
-                except ValueError:
-                    logger.info(f'Date {bldate} is not formatted YYYYMMDD')
-                    raise ValueError
-    if not BLDATEFOUND:
-        job_obj.comment_text_append('BL_DATE not found in rt.sh.'
-                                    'Please manually edit rt.sh '
-                                    'with BL_DATE={bldate}')
-        job_obj.job_failed(logger, 'get_bl_date()')
-    logger.info('Finished get_bl_date')
-
-    return bldate
+    return logfile_pass
 
 
 def process_logfile(job_obj, ci_log):

@@ -125,8 +125,8 @@ class Job:
     def __init__(self, preq_dict, ghinterface_obj, machine, compiler, repo):
         self.logger = logging.getLogger('JOB')
         self.preq_dict = preq_dict
-        self.job_mod = importlib.import_module(
-                       f'jobs.{self.preq_dict["action"].lower()}')
+        # both build and WE2E tests call same module
+        self.job_mod = importlib.import_module('jobs.build')
         self.ghinterface_obj = ghinterface_obj
         self.machine = machine
         self.compiler = compiler
