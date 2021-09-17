@@ -57,7 +57,7 @@ def set_action_from_label(machine, actions, label):
     ''' Match the label that initiates a job with an action in the dict'''
     # <machine>-<compiler>-<test> i.e. hera-gnu-RT
     logger = logging.getLogger('MATCH_LABEL_WITH_ACTIONS')
-    logger.info('Setting action from Label')
+    logger.info('Setting action from Label {label}')
     split_label = label.name.split('-')
     # Make sure it has three parts
     if len(split_label) != 3:
@@ -162,7 +162,6 @@ class Job:
                 output = subprocess.Popen(command, shell=True, cwd=in_cwd,
                                           stdout=subprocess.PIPE,
                                           stderr=subprocess.STDOUT)
-                output.wait()
             except Exception as e:
                 self.job_failed(logger, 'subprocess.Popen', exception=e)
             else:
