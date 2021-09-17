@@ -17,15 +17,25 @@ def run(job_obj):
                              build_script_loc]]
     logger.info('Running test build script')
     job_obj.run_commands(logger, create_build_commands)
+    # Read the build log to see whether it succeeded
     build_success = post_process(job_obj, build_script_loc, log_name)
-    logger.info('After post-processing')
+    logger.info('After build post-processing')
     logger.info(f'Action: {job_obj.preq_dict["action"]}')
-    if build_success and (job_obj.preq_dict["action"] == 'WE'):
-        logger.info('Running end to end test')
-        expt_script_loc = pr_repo_loc + '/regional_workflow/tests/WE2E'
-        create_expt_commands = [[f'./end_to_end_tests.sh {job_obj.machine} '
-                                'zrtrr', expt_script_loc]]
-        job_obj.run_commands(logger, create_expt_commands)
+    if build_success:
+        job_obj.comment_text_append('Build was Successful')
+        if job_obj.preq_dict["action"] == 'WE':
+            logger.info('Running end to end test')
+            expt_script_loc = pr_repo_loc + '/regional_workflow/tests/WE2E'
+            log_name = 'expt.out'
+            create_expt_commands = \
+                [[f'./end_to_end_tests.sh {job_obj.machine} zrtrr >& '
+                 f'{log_name}', expt_script_loc]]
+            job_obj.run_commands(logger, create_expt_commands)
+            logger.info('After end_to_end script')
+            job_obj.comment_text_append('Rocoto jobs started')
+    else:
+        job_obj.comment_text_append('Build Failed')
+    job_obj.send_comment_text()
 
 
 def set_directories(job_obj):
