@@ -1,6 +1,7 @@
 # Imports
 import datetime
 import logging
+import time
 import os
 from configparser import ConfigParser as config_parser
 
@@ -22,19 +23,22 @@ def run(job_obj):
     logger.info('After build post-processing')
     logger.info(f'Action: {job_obj.preq_dict["action"]}')
     if build_success:
-        job_obj.comment_text_append('Build was Successful')
+        job_obj.comment_append('Build was Successful')
         if job_obj.preq_dict["action"] == 'WE':
             logger.info('Running end to end test')
             expt_script_loc = pr_repo_loc + '/regional_workflow/tests/WE2E'
+            expt_dirs = repo_dir_str + '/expt_dirs'
             log_name = 'expt.out'
             create_expt_commands = \
                 [[f'./end_to_end_tests.sh {job_obj.machine} zrtrr >& '
                  f'{log_name}', expt_script_loc]]
             job_obj.run_commands(logger, create_expt_commands)
             logger.info('After end_to_end script')
-            job_obj.comment_text_append('Rocoto jobs started')
+            job_obj.comment_append('Rocoto jobs started')
+            if os.path.exists(expt_dirs):
+                process_expt(job_obj, expt_dirs)
     else:
-        job_obj.comment_text_append('Build Failed')
+        job_obj.comment_append('Build Failed')
     job_obj.send_comment_text()
 
 
@@ -64,26 +68,6 @@ def set_directories(job_obj):
     logger.info(f'workdir: {workdir}')
 
     return workdir
-
-
-def check_for_bl_dir(bldir, job_obj):
-    logger = logging.getLogger('BUILD/CHECK_FOR_BL_DIR')
-    logger.info('Checking if baseline directory exists')
-    if os.path.exists(bldir):
-        logger.critical(f'Baseline dir: {bldir} exists. It should not, yet.')
-        job_obj.comment_text_append(f'{bldir}\n Exists already. '
-                                    'It should not yet. Please delete.')
-        raise FileExistsError
-    return False
-
-
-def create_bl_dir(bldir, job_obj):
-    logger = logging.getLogger('BUILD/CREATE_BL_DIR')
-    if not check_for_bl_dir(bldir, job_obj):
-        os.makedirs(bldir)
-        if not os.path.exists(bldir):
-            logger.critical(f'Someting went wrong creating {bldir}')
-            raise FileNotFoundError
 
 
 def run_regression_test(job_obj, pr_repo_loc):
@@ -120,7 +104,7 @@ def clone_pr_repo(job_obj, workdir):
                    f'{str(job_obj.preq_dict["preq"].id)}/'\
                    f'{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}'
     pr_repo_loc = f'{repo_dir_str}/ufs-srweather-app'
-    job_obj.comment_text_append(f'Repo location: {pr_repo_loc}')
+    job_obj.comment_append(f'Repo location: {pr_repo_loc}')
 
     create_repo_commands = [
         [f'mkdir -p "{repo_dir_str}"', os.getcwd()],
@@ -188,7 +172,7 @@ def process_logfile(job_obj, ci_log):
             for line in f:
                 if fail_string in line:
                     build_failed = True
-                    job_obj.comment_text_append(f'{line.rstrip()}')
+                    job_obj.comment_append(f'{line.rstrip()}')
         if build_failed:
             job_obj.send_comment_text()
             logger.info('Build failed')
@@ -200,3 +184,41 @@ def process_logfile(job_obj, ci_log):
                         f'.{job_obj.compiler} '
                         f'{job_obj.preq_dict["action"]} log')
         raise FileNotFoundError
+
+
+def process_expt(job_obj, expt_dirs):
+    logger = logging.getLogger('BUILD/PROCESS_EXPT')
+    expt_done = 0
+    i = 72
+    complete_string = "This cycle is complete"
+    failed_string = "FAILED"
+
+    while not expt_done and i > 0:
+        time.sleep(300)
+        i = i - 1
+        expt_done = 0
+        expt_list = os.listdir(expt_dirs)
+        logger.info('Experiment dir after return of end_to_end')
+        logger.info(expt_list)
+        for expt in expt_list:
+            expt_log = expt_dirs + '/' + expt + \
+                '/log/FV3LAM_wflow.log'
+            if os.path.exists(expt_log):
+                with open(expt_log) as f:
+                    for line in f:
+                        if complete_string in line:
+                            expt_done = expt_done + 1
+                            job_obj.comment_append(f'Experiment done: {expt}')
+                            job_obj.comment_append(f'{line.rstrip()}')
+                            logger.info(f'Experiment done: {expt}')
+                        else:
+                            if failed_string in line:
+                                expt_done = expt_done + 1
+                                job_obj.comment_append('Experiment failed: '
+                                                       f'{expt}')
+                                job_obj.comment_append(f'{line.rstrip()}')
+                                logger.info(f'Experiment failed: {expt}')
+        # looking to see if all experiments are done
+        if expt_done < len(expt_list):
+            expt_done = 0
+    logger.info(f'Wait Cycles completed: {i}')

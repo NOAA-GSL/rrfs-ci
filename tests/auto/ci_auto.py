@@ -134,7 +134,7 @@ class Job:
         self.comment_text = ''
         self.failed_tests = []
 
-    def comment_text_append(self, newtext):
+    def comment_append(self, newtext):
         self.comment_text += f'{newtext}\n'
 
     def remove_pr_label(self):
@@ -179,9 +179,9 @@ class Job:
     def run(self):
         logger = logging.getLogger('JOB/RUN')
         logger.info(f'Starting Job: {self.preq_dict["label"]}')
-        self.comment_text_append(newtext=f'Machine: {self.machine}')
-        self.comment_text_append(f'Compiler: {self.compiler}')
-        self.comment_text_append(f'Job: {self.preq_dict["action"]}')
+        self.comment_append(newtext=f'Machine: {self.machine}')
+        self.comment_append(f'Compiler: {self.compiler}')
+        self.comment_append(f'Job: {self.preq_dict["action"]}')
         if self.check_label_before_job_start():
             try:
                 logger.info('Calling remove_pr_label')
@@ -198,11 +198,11 @@ class Job:
     def send_comment_text(self):
         logger = logging.getLogger('JOB/SEND_COMMENT_TEXT')
         logger.info(f'Comment Text: {self.comment_text}')
-        self.comment_text_append('Please make changes and add '
-                                 'the following label back:')
-        self.comment_text_append(f'{self.machine}'
-                                 f'-{self.compiler}'
-                                 f'-{self.preq_dict["action"]}')
+        self.comment_append('If test failed, please make changes and add '
+                            'the following label back:')
+        self.comment_append(f'{self.machine}'
+                            f'-{self.compiler}'
+                            f'-{self.preq_dict["action"]}')
 
         self.preq_dict['preq'].create_issue_comment(self.comment_text)
 
