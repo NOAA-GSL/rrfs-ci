@@ -7,6 +7,9 @@ from configparser import ConfigParser as config_parser
 
 
 def run(job_obj):
+    """
+    Runs a CI test for a PR
+    """
     logger = logging.getLogger('BUILD/RUN')
     workdir = set_directories(job_obj)
     pr_repo_loc, repo_dir_str = clone_pr_repo(job_obj, workdir)
@@ -34,21 +37,28 @@ def run(job_obj):
                  f'{log_name}', expt_script_loc]]
             job_obj.run_commands(logger, create_expt_commands)
             logger.info('After end_to_end script')
-            job_obj.comment_append('Rocoto jobs started')
             if os.path.exists(expt_dirs):
+                job_obj.comment_append('Rocoto jobs started')
                 process_expt(job_obj, expt_dirs)
+            else:
+                gen_log_loc = pr_repo_loc + '/regional_workflow/ush'
+                gen_log_name = 'log.generate_FV3LAM_wflow'
+                process_gen(job_obj, gen_log_loc, gen_log_name)
     else:
         job_obj.comment_append('Build Failed')
     job_obj.send_comment_text()
 
 
 def set_directories(job_obj):
+    """
+    Set up work directory for various hpc machines
+    """
     logger = logging.getLogger('BUILD/SET_DIRECTORIES')
     if job_obj.machine == 'hera':
         workdir = '/scratch2/BMC/zrtrr/rrfs_ci/autoci/pr'
 
     elif job_obj.machine == 'jet':
-        workdir = '/lfs4/HFIP/h-nems/emc.nemspara/autort/pr'
+        workdir = '/lfs1/BMC/nrtrr/rrfs_ci/autoci/pr'
 
     elif job_obj.machine == 'gaea':
         workdir = '/lustre/f2/pdata/ncep/emc.nemspara/autort/pr'
@@ -137,8 +147,8 @@ def clone_pr_repo(job_obj, workdir):
             if config.has_option(updated_section, 'tag'):
                 config.remove_option(updated_section, 'tag')
             # open existing Externals.cfg to update it
-            with open(file_path, 'w') as f:
-                config.write(f)
+            with open(file_path, 'w') as fname:
+                config.write(fname)
         else:
             logger.info('No section {updated_section} in Externals.cfg')
 
@@ -164,12 +174,16 @@ def post_process(job_obj, build_script_loc, log_name):
 
 
 def process_logfile(job_obj, ci_log):
+    """
+    Runs after code has been cloned and built
+    Checks to see whether build was successful or failed
+    """
     logger = logging.getLogger('BUILD/PROCESS_LOGFILE')
     fail_string = 'FAIL'
     build_failed = False
     if os.path.exists(ci_log):
-        with open(ci_log) as f:
-            for line in f:
+        with open(ci_log) as fname:
+            for line in fname:
                 if fail_string in line:
                     build_failed = True
                     job_obj.comment_append(f'{line.rstrip()}')
@@ -186,16 +200,43 @@ def process_logfile(job_obj, ci_log):
         raise FileNotFoundError
 
 
+def process_gen(job_obj, gen_log_loc, gen_log_name):
+    """
+    Runs after a rocoto workflow has been generated
+    Checks to see if an error has occurred
+    """
+    logger = logging.getLogger('BUILD/PROCESS_GEN')
+    gen_log = f'{gen_log_loc}/{gen_log_name}'
+    error_string = 'ERROR'
+    gen_failed = False
+    if os.path.exists(gen_log):
+        with open(gen_log) as fname:
+            for line in fname:
+                if error_string in line:
+                    job_obj.comment_append('Generating Workflow Failed')
+                    gen_failed = True
+                    logger.info('Generating workflow failed')
+                if gen_failed:
+                    job_obj.comment_append(f'{line.rstrip()}')
+
+
 def process_expt(job_obj, expt_dirs):
+    """
+    Runs after a rocoto workflow has been started to run one or more expts
+    Assumes that more expt directories can appear after this job has started
+    Checks for success or failure for each expt
+    """
     logger = logging.getLogger('BUILD/PROCESS_EXPT')
     expt_done = 0
-    i = 72
+    repeat_count = 72
+    complete_expts = []
+    expt_list = []
     complete_string = "This cycle is complete"
     failed_string = "FAILED"
 
-    while not expt_done and i > 0:
+    while not expt_done and repeat_count > 0:
         time.sleep(300)
-        i = i - 1
+        repeat_count = repeat_count - 1
         expt_done = 0
         expt_list = os.listdir(expt_dirs)
         logger.info('Experiment dir after return of end_to_end')
@@ -203,14 +244,15 @@ def process_expt(job_obj, expt_dirs):
         for expt in expt_list:
             expt_log = expt_dirs + '/' + expt + \
                 '/log/FV3LAM_wflow.log'
-            if os.path.exists(expt_log):
-                with open(expt_log) as f:
-                    for line in f:
+            if os.path.exists(expt_log) and expt not in complete_expts:
+                with open(expt_log) as fname:
+                    for line in fname:
                         if complete_string in line:
                             expt_done = expt_done + 1
                             job_obj.comment_append(f'Experiment done: {expt}')
                             job_obj.comment_append(f'{line.rstrip()}')
                             logger.info(f'Experiment done: {expt}')
+                            complete_expts.append(expt)
                         else:
                             if failed_string in line:
                                 expt_done = expt_done + 1
@@ -218,7 +260,9 @@ def process_expt(job_obj, expt_dirs):
                                                        f'{expt}')
                                 job_obj.comment_append(f'{line.rstrip()}')
                                 logger.info(f'Experiment failed: {expt}')
+                                complete_expts.append(expt)
         # looking to see if all experiments are done
         if expt_done < len(expt_list):
             expt_done = 0
-    logger.info(f'Wait Cycles completed: {i}')
+    logger.info(f'Wait Cycles completed: {72 - repeat_count}')
+    job_obj.comment_append(f'Done: {len(complete_expts)} of {len(expt_list)}')
