@@ -54,18 +54,19 @@ class GHInterface:
 
 
 def set_action_from_label(machine, actions, label):
-    ''' Match the label that initiates a job with an action in the dict'''
-    # <machine>-<compiler>-<test> i.e. hera-gnu-RT
+    ''' Match the label that initiates a job with an action in the dict
+        Labels have a ci- prefix'''
+    # ci-<machine>-<compiler>-<test> i.e. ci-hera-intel-build
     logger = logging.getLogger('MATCH_LABEL_WITH_ACTIONS')
     logger.info('Setting action from Label {label}')
     split_label = label.name.split('-')
     # Make sure it has three parts
-    if len(split_label) != 3:
+    if len(split_label) != 4:
         return False, False
-    # Break the parts into their variables
-    label_machine = split_label[0]
-    label_compiler = split_label[1]
-    label_action = split_label[2]
+    # Break the parts into their variables, ignoring prefix
+    label_machine = split_label[1]
+    label_compiler = split_label[2]
+    label_action = split_label[3]
     # check machine name matches
     if not re.match(label_machine, machine):
         return False, False
@@ -145,7 +146,7 @@ class Job:
     def check_label_before_job_start(self):
         # LETS Check the label still exists before the start of the job in the
         # case of multiple jobs
-        label_to_check = f'{self.machine}'\
+        label_to_check = f'ci-{self.machine}'\
                          f'-{self.compiler}'\
                          f'-{self.preq_dict["action"]}'
         labels = self.preq_dict['preq'].get_labels()
@@ -200,7 +201,7 @@ class Job:
         logger.info(f'Comment Text: {self.comment_text}')
         self.comment_append('If test failed, please make changes and add '
                             'the following label back:')
-        self.comment_append(f'{self.machine}'
+        self.comment_append(f'ci-{self.machine}'
                             f'-{self.compiler}'
                             f'-{self.preq_dict["action"]}')
 

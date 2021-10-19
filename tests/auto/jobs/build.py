@@ -28,22 +28,28 @@ def run(job_obj):
     if build_success:
         job_obj.comment_append('Build was Successful')
         if job_obj.preq_dict["action"] == 'WE':
-            logger.info('Running end to end test')
             expt_script_loc = pr_repo_loc + '/regional_workflow/tests/WE2E'
             expt_dirs = repo_dir_str + '/expt_dirs'
             log_name = 'expt.out'
-            create_expt_commands = \
-                [[f'./end_to_end_tests.sh {job_obj.machine} zrtrr >& '
-                 f'{log_name}', expt_script_loc]]
-            job_obj.run_commands(logger, create_expt_commands)
-            logger.info('After end_to_end script')
-            if os.path.exists(expt_dirs):
-                job_obj.comment_append('Rocoto jobs started')
-                process_expt(job_obj, expt_dirs)
+            we2e_script = expt_script_loc + '/end_to_end_tests.sh'
+            if os.path.exists(we2e_script):
+                logger.info('Running end to end test')
+                create_expt_commands = \
+                    [[f'./end_to_end_tests.sh {job_obj.machine} zrtrr >& '
+                     f'{log_name}', expt_script_loc]]
+                job_obj.run_commands(logger, create_expt_commands)
+                logger.info('After end_to_end script')
+                if os.path.exists(expt_dirs):
+                    job_obj.comment_append('Rocoto jobs started')
+                    process_expt(job_obj, expt_dirs)
+                else:
+                    gen_log_loc = pr_repo_loc + '/regional_workflow/ush'
+                    gen_log_name = 'log.generate_FV3LAM_wflow'
+                    process_gen(job_obj, gen_log_loc, gen_log_name)
             else:
-                gen_log_loc = pr_repo_loc + '/regional_workflow/ush'
-                gen_log_name = 'log.generate_FV3LAM_wflow'
-                process_gen(job_obj, gen_log_loc, gen_log_name)
+                job_obj.comment_append(f'Script {we2e_script} '
+                                       'does not exist in repo')
+                job_obj.comment_append('Cannot run WE2E tests')
     else:
         job_obj.comment_append('Build Failed')
     job_obj.send_comment_text()
