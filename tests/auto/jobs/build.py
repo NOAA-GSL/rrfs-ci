@@ -110,21 +110,45 @@ def remove_pr_data(job_obj, pr_repo_loc, repo_dir_str, rt_dir):
 def clone_pr_repo(job_obj, workdir):
     ''' clone the GitHub pull request repo, via command line '''
     logger = logging.getLogger('BUILD/CLONE_PR_REPO')
-    repo_name = job_obj.repo["app_address"]
-    branch = job_obj.repo["app_branch"]
-    git_url = f'https://${{ghapitoken}}@github.com/{repo_name}'
+
+    app_name = 'ufs-srweather-app'
+    # These are for the new/head repo in the PR
+    new_name = job_obj.preq_dict['preq'].head.repo.name
+    new_repo = job_obj.preq_dict['preq'].head.repo.full_name
+    new_branch = job_obj.preq_dict['preq'].head.ref
+    # These are for the default app repo that goes with the workflow
+    auth_repo = job_obj.repo["app_address"]
+    auth_branch = job_obj.repo["app_branch"]
+    # The new repo is the default repo
+    git_url = f'https://${{ghapitoken}}@github.com/{new_repo}'
+
+    # If the new repo is the regional workflow (not the app)
+    if new_name != app_name:
+        # look for a matching app repo/branch
+        app_repo = job_obj.preq_dict['preq'].head.user.login + '/' + app_name
+        branch_list = list(job_obj.ghinterface_obj.client.get_repo(app_repo)
+                           .get_branches())
+        if new_branch in [branch.name for branch in branch_list]:
+            git_url = f'https://${{ghapitoken}}@github.com/{app_repo}'
+            app_branch = new_branch
+        else:
+            git_url = f'https://${{ghapitoken}}@github.com/{auth_repo}'
+            app_branch = auth_branch
+    else:
+        app_branch = new_branch
+
     logger.info(f'GIT URL: {git_url}')
-    logger.info(f'app branch: {branch}')
+    logger.info(f'app branch: {app_branch}')
     logger.info('Starting repo clone')
     repo_dir_str = f'{workdir}/'\
                    f'{str(job_obj.preq_dict["preq"].id)}/'\
                    f'{datetime.datetime.now().strftime("%Y%m%d%H%M%S")}'
-    pr_repo_loc = f'{repo_dir_str}/ufs-srweather-app'
+    pr_repo_loc = f'{repo_dir_str}/{app_name}'
     job_obj.comment_append(f'Repo location: {pr_repo_loc}')
 
     create_repo_commands = [
         [f'mkdir -p "{repo_dir_str}"', os.getcwd()],
-        [f'git clone -b {branch} {git_url}', repo_dir_str]]
+        [f'git clone -b {app_branch} {git_url}', repo_dir_str]]
     job_obj.run_commands(logger, create_repo_commands)
 
     # Set up configparser to read and update Externals.cfg ini/config file
@@ -134,31 +158,34 @@ def clone_pr_repo(job_obj, workdir):
     file_path = os.path.join(pr_repo_loc, file_name)
     if not os.path.exists(file_path):
         logger.info('Could not find Externals.cfg')
+        raise FileNotFoundError
     else:
-        config.read(file_path)
-        updated_section = job_obj.preq_dict['preq'].head.repo.name
-        logger.info(f'updated section: {updated_section}')
-        new_repo = "https://github.com/" + \
-            job_obj.preq_dict['preq'].head.repo.full_name
-        logger.info(f'new repo: {new_repo}')
+        # Only update Externals.cfg for a PR on a regional workflow
+        if new_name != app_name:
+            config.read(file_path)
+            updated_section = new_name
+            logger.info(f'updated section: {updated_section}')
+            new_repo = "https://github.com/" + \
+                job_obj.preq_dict['preq'].head.repo.full_name
+            logger.info(f'new repo: {new_repo}')
+    
+            if config.has_section(updated_section):
+    
+                config.set(updated_section, 'hash',
+                           job_obj.preq_dict['preq'].head.sha)
+                config.set(updated_section, 'repo_url', new_repo)
+                # Can only have one of hash, branch, tag
+                if config.has_option(updated_section, 'branch'):
+                    config.remove_option(updated_section, 'branch')
+                if config.has_option(updated_section, 'tag'):
+                    config.remove_option(updated_section, 'tag')
+                # open existing Externals.cfg to update it
+                with open(file_path, 'w') as fname:
+                    config.write(fname)
+            else:
+                logger.info('No section {updated_section} in Externals.cfg')
 
-        if config.has_section(updated_section):
-
-            config.set(updated_section, 'hash',
-                       job_obj.preq_dict['preq'].head.sha)
-            config.set(updated_section, 'repo_url', new_repo)
-            # Can only have one of hash, branch, tag
-            if config.has_option(updated_section, 'branch'):
-                config.remove_option(updated_section, 'branch')
-            if config.has_option(updated_section, 'tag'):
-                config.remove_option(updated_section, 'tag')
-            # open existing Externals.cfg to update it
-            with open(file_path, 'w') as fname:
-                config.write(fname)
-        else:
-            logger.info('No section {updated_section} in Externals.cfg')
-
-    # call manage externals with new Externals.cfg to get other repos
+    # call manage externals to get other repos
     logger.info('Starting manage externals')
     create_repo_commands = [['./manage_externals/checkout_externals',
                              pr_repo_loc]]
