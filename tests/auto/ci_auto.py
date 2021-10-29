@@ -80,7 +80,7 @@ def set_action_from_label(machine, actions, label):
     return label_compiler, action_match
 
 
-def get_preqs_with_actions(repos, machine, ghinterface_obj, actions):
+def get_preqs_with_actions(repos, machine, ghinterface_obj, actions, hpc_acc):
     ''' Create list of dictionaries of a pull request
         and its machine label and action '''
     logger = logging.getLogger('GET_PREQS_WITH_ACTIONS')
@@ -101,7 +101,7 @@ def get_preqs_with_actions(repos, machine, ghinterface_obj, actions):
             if match:
                 pr_label['action'] = match
                 jobs.append(Job(pr_label.copy(), ghinterface_obj,
-                                machine, compiler, repo))
+                                machine, compiler, repo, hpc_acc))
 
     return jobs
 
@@ -123,7 +123,8 @@ class Job:
         provided by the bash script
     '''
 
-    def __init__(self, preq_dict, ghinterface_obj, machine, compiler, repo):
+    def __init__(self, preq_dict, ghinterface_obj, machine, compiler, 
+                 repo, hpc_acc):
         self.logger = logging.getLogger('JOB')
         self.preq_dict = preq_dict
         # both build and WE2E tests call same module
@@ -132,6 +133,7 @@ class Job:
         self.machine = machine
         self.compiler = compiler
         self.repo = repo
+        self.hpc_acc = hpc_acc
         self.comment_text = ''
         self.failed_tests = []
 
@@ -222,11 +224,14 @@ def setup_env():
     hostname = os.getenv('HOSTNAME')
     if bool(re.match(re.compile('hfe.+'), hostname)):
         machine = 'hera'
+        hpc_acc = 'zrtrr'
     elif bool(re.match(re.compile('hecflow.+'), hostname)):
         machine = 'hera'
+        hpc_acc = 'zrtrr'
     elif bool(re.match(re.compile('fe.+'), hostname)):
         machine = 'jet'
-        os.environ['ACCNR'] = 'h-nems'
+        hpc_acc = 'nrtrr'
+        os.environ['ACCNR'] = hpc_acc
     elif bool(re.match(re.compile('gaea.+'), hostname)):
         machine = 'gaea'
         os.environ['ACCNR'] = 'nggps_emc'
@@ -262,7 +267,7 @@ def setup_env():
     # Approved Actions
     action_list = ['build', 'WE']
 
-    return machine, repo_dict, action_list
+    return machine, repo_dict, action_list, hpc_acc
 
 
 def main():
@@ -277,7 +282,7 @@ def main():
 
     # setup environment
     logger.info('Getting the environment setup')
-    machine, repos, actions = setup_env()
+    machine, repos, actions, hpc_acc = setup_env()
 
     # setup interface with GitHub
     logger.info('Setting up GitHub interface.')
@@ -288,7 +293,7 @@ def main():
     logger.info('Getting all pull requests, '
                 'labels and actions applicable to this machine.')
     jobs = get_preqs_with_actions(repos, machine,
-                                  ghinterface_obj, actions)
+                                  ghinterface_obj, actions, hpc_acc)
     [job.run() for job in jobs]
 
     logger.info('Script Finished')

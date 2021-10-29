@@ -35,8 +35,9 @@ def run(job_obj):
             if os.path.exists(we2e_script):
                 logger.info('Running end to end test')
                 create_expt_commands = \
-                    [[f'./end_to_end_tests.sh {job_obj.machine} zrtrr >& '
-                     f'{log_name}', expt_script_loc]]
+                    [[f'./end_to_end_tests.sh {job_obj.machine} '
+                      f'{job_obj.hpc_acc} >& '
+                      f'{log_name}', expt_script_loc]]
                 job_obj.run_commands(logger, create_expt_commands)
                 logger.info('After end_to_end script')
                 if os.path.exists(expt_dirs):
@@ -168,9 +169,9 @@ def clone_pr_repo(job_obj, workdir):
             new_repo = "https://github.com/" + \
                 job_obj.preq_dict['preq'].head.repo.full_name
             logger.info(f'new repo: {new_repo}')
-    
+
             if config.has_section(updated_section):
-    
+
                 config.set(updated_section, 'hash',
                            job_obj.preq_dict['preq'].head.sha)
                 config.set(updated_section, 'repo_url', new_repo)
