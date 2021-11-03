@@ -123,7 +123,7 @@ class Job:
         provided by the bash script
     '''
 
-    def __init__(self, preq_dict, ghinterface_obj, machine, compiler, 
+    def __init__(self, preq_dict, ghinterface_obj, machine, compiler,
                  repo, hpc_acc):
         self.logger = logging.getLogger('JOB')
         self.preq_dict = preq_dict

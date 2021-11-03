@@ -264,14 +264,13 @@ def process_expt(job_obj, expt_dirs):
     expt_done = 0
     repeat_count = 72
     complete_expts = []
-    expt_list = []
+    expt_list = os.listdir(expt_dirs)
     complete_string = "This cycle is complete"
     failed_string = "FAILED"
 
-    while not expt_done and repeat_count > 0:
+    while (expt_done < len(expt_list)) and repeat_count > 0:
         time.sleep(300)
         repeat_count = repeat_count - 1
-        expt_done = 0
         expt_list = os.listdir(expt_dirs)
         logger.info('Experiment dir after return of end_to_end')
         logger.info(expt_list)
@@ -295,8 +294,5 @@ def process_expt(job_obj, expt_dirs):
                                 job_obj.comment_append(f'{line.rstrip()}')
                                 logger.info(f'Experiment failed: {expt}')
                                 complete_expts.append(expt)
-        # looking to see if all experiments are done
-        if expt_done < len(expt_list):
-            expt_done = 0
     logger.info(f'Wait Cycles completed: {72 - repeat_count}')
     job_obj.comment_append(f'Done: {len(complete_expts)} of {len(expt_list)}')
