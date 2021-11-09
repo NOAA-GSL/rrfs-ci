@@ -59,14 +59,13 @@ def set_action_from_label(machine, actions, label):
     # ci-<machine>-<compiler>-<test> i.e. ci-hera-intel-build
     logger = logging.getLogger('MATCH_LABEL_WITH_ACTIONS')
     logger.info('Setting action from Label {label}')
-    split_label = label.name.split('-')
+    # split the label apart and remove its prefix
+    split_label = label.name.split('-')[1:]
     # Make sure it has three parts
-    if len(split_label) != 4:
+    if len(split_label) != 3:
         return False, False
-    # Break the parts into their variables, ignoring prefix
-    label_machine = split_label[1]
-    label_compiler = split_label[2]
-    label_action = split_label[3]
+    # Break out the label parts
+    label_machine, label_compiler, label_action = split_label
     # check machine name matches
     if not re.match(label_machine, machine):
         return False, False

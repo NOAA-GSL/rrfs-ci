@@ -112,7 +112,6 @@ def clone_pr_repo(job_obj, workdir):
     ''' clone the GitHub pull request repo, via command line '''
     logger = logging.getLogger('BUILD/CLONE_PR_REPO')
 
-    app_name = 'ufs-srweather-app'
     # These are for the new/head repo in the PR
     new_name = job_obj.preq_dict['preq'].head.repo.name
     new_repo = job_obj.preq_dict['preq'].head.repo.full_name
@@ -120,13 +119,15 @@ def clone_pr_repo(job_obj, workdir):
     # These are for the default app repo that goes with the workflow
     auth_repo = job_obj.repo["app_address"]
     auth_branch = job_obj.repo["app_branch"]
+    app_name = auth_repo.split("/")[1]
     # The new repo is the default repo
     git_url = f'https://${{ghapitoken}}@github.com/{new_repo}'
 
     # If the new repo is the regional workflow (not the app)
     if new_name != app_name:
         # look for a matching app repo/branch
-        app_repo = job_obj.preq_dict['preq'].head.user.login + '/' + app_name
+        app_repo = os.path.join(job_obj.preq_dict['preq'].head.user.login,
+                                app_name)
         branch_list = list(job_obj.ghinterface_obj.client.get_repo(app_repo)
                            .get_branches())
         if new_branch in [branch.name for branch in branch_list]:
@@ -262,21 +263,23 @@ def process_expt(job_obj, expt_dirs):
     """
     logger = logging.getLogger('BUILD/PROCESS_EXPT')
     expt_done = 0
-    repeat_count = 72
+    # wait time for workflow is time_mult * sleep_time seconds
+    time_mult = 60
+    sleep_time = 360
+    repeat_count = time_mult
     complete_expts = []
     expt_list = os.listdir(expt_dirs)
     complete_string = "This cycle is complete"
     failed_string = "FAILED"
 
     while (expt_done < len(expt_list)) and repeat_count > 0:
-        time.sleep(300)
+        time.sleep(sleep_time)
         repeat_count = repeat_count - 1
         expt_list = os.listdir(expt_dirs)
         logger.info('Experiment dir after return of end_to_end')
         logger.info(expt_list)
         for expt in expt_list:
-            expt_log = expt_dirs + '/' + expt + \
-                '/log/FV3LAM_wflow.log'
+            expt_log = os.path.join(expt_dirs, expt, 'log/FV3LAM_wflow.log')
             if os.path.exists(expt_log) and expt not in complete_expts:
                 with open(expt_log) as fname:
                     for line in fname:
@@ -294,5 +297,5 @@ def process_expt(job_obj, expt_dirs):
                                 job_obj.comment_append(f'{line.rstrip()}')
                                 logger.info(f'Experiment failed: {expt}')
                                 complete_expts.append(expt)
-    logger.info(f'Wait Cycles completed: {72 - repeat_count}')
+    logger.info(f'Wait Cycles completed: {time_mult - repeat_count}')
     job_obj.comment_append(f'Done: {len(complete_expts)} of {len(expt_list)}')
