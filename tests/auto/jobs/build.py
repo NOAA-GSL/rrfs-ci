@@ -11,8 +11,7 @@ def run(job_obj):
     Runs a CI test for a PR
     """
     logger = logging.getLogger('BUILD/RUN')
-    workdir = set_directories(job_obj)
-    pr_repo_loc, repo_dir_str = clone_pr_repo(job_obj, workdir)
+    pr_repo_loc, repo_dir_str = clone_pr_repo(job_obj, job_obj.workdir)
     # Setting this for the test/build.sh script
     os.environ['SR_WX_APP_TOP_DIR'] = pr_repo_loc
     build_script_loc = pr_repo_loc + '/test'
@@ -54,37 +53,6 @@ def run(job_obj):
     else:
         job_obj.comment_append('Build Failed')
     job_obj.send_comment_text()
-
-
-def set_directories(job_obj):
-    """
-    Set up work directory for various hpc machines
-    """
-    logger = logging.getLogger('BUILD/SET_DIRECTORIES')
-    if job_obj.machine == 'hera':
-        workdir = '/scratch2/BMC/zrtrr/rrfs_ci/autoci/pr'
-
-    elif job_obj.machine == 'jet':
-        workdir = '/lfs1/BMC/nrtrr/rrfs_ci/autoci/pr'
-
-    elif job_obj.machine == 'gaea':
-        workdir = '/lustre/f2/pdata/ncep/emc.nemspara/autort/pr'
-
-    elif job_obj.machine == 'orion':
-        workdir = '/work/noaa/nems/emc.nemspara/autort/pr'
-
-    elif job_obj.machine == 'cheyenne':
-        workdir = '/glade/scratch/dtcufsrt/autort/tests/auto/pr'
-
-    else:
-        logger.critical(f'Machine {job_obj.machine} id '
-                        'not supported for this job')
-        raise KeyError
-
-    logger.info(f'machine: {job_obj.machine}')
-    logger.info(f'workdir: {workdir}')
-
-    return workdir
 
 
 def run_regression_test(job_obj, pr_repo_loc):
@@ -283,7 +251,7 @@ def process_expt(job_obj, expts_base_dir):
         logger.info('Experiment dir after return of end_to_end')
         logger.info(expt_list)
         for expt in expt_list:
-            expt_log = os.path.join(expts_base_dir, expt, 
+            expt_log = os.path.join(expts_base_dir, expt,
                                     'log/FV3LAM_wflow.log')
             if os.path.exists(expt_log) and expt not in complete_expts:
                 with open(expt_log) as fname:

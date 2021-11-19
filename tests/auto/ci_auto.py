@@ -79,7 +79,7 @@ def set_action_from_label(machine, actions, label):
     return label_compiler, action_match
 
 
-def get_preqs_with_actions(repos, machine, ghinterface_obj, actions, hpc_acc):
+def get_preqs_with_actions(repos, machine_dict, ghinterface_obj, actions):
     ''' Create list of dictionaries of a pull request
         and its machine label and action '''
     logger = logging.getLogger('GET_PREQS_WITH_ACTIONS')
@@ -95,12 +95,12 @@ def get_preqs_with_actions(repos, machine, ghinterface_obj, actions, hpc_acc):
                        for label in pr.get_labels()]
 
         for pr_label in preq_labels:
-            compiler, match = set_action_from_label(machine, actions,
-                                                    pr_label['label'])
+            compiler, match = set_action_from_label(machine_dict['machine'],
+                                                    actions, pr_label['label'])
             if match:
                 pr_label['action'] = match
                 jobs.append(Job(pr_label.copy(), ghinterface_obj,
-                                machine, compiler, repo, hpc_acc))
+                                machine_dict, compiler, repo))
 
     return jobs
 
@@ -122,17 +122,18 @@ class Job:
         provided by the bash script
     '''
 
-    def __init__(self, preq_dict, ghinterface_obj, machine, compiler,
-                 repo, hpc_acc):
+    def __init__(self, preq_dict, ghinterface_obj, machine_dict, compiler,
+                 repo):
         self.logger = logging.getLogger('JOB')
         self.preq_dict = preq_dict
         # both build and WE2E tests call same module
         self.job_mod = importlib.import_module('jobs.build')
         self.ghinterface_obj = ghinterface_obj
-        self.machine = machine
+        self.machine = machine_dict['machine']
         self.compiler = compiler
         self.repo = repo
-        self.hpc_acc = hpc_acc
+        self.hpc_acc = machine_dict['hpc_acc']
+        self.workdir = machine_dict['workdir']
         self.comment_text = ''
         self.failed_tests = []
 
@@ -220,35 +221,35 @@ class Job:
 def setup_env():
     logger = logging.getLogger('SETUP')
 
-    hostname = os.getenv('HOSTNAME')
-    if bool(re.match(re.compile('hfe.+'), hostname)):
-        machine = 'hera'
-        hpc_acc = 'zrtrr'
-    elif bool(re.match(re.compile('hecflow.+'), hostname)):
-        machine = 'hera'
-        hpc_acc = 'zrtrr'
-    elif bool(re.match(re.compile('fe.+'), hostname)):
-        machine = 'jet'
-        hpc_acc = 'nrtrr'
-        os.environ['ACCNR'] = hpc_acc
-    elif bool(re.match(re.compile('gaea.+'), hostname)):
-        machine = 'gaea'
-        os.environ['ACCNR'] = 'nggps_emc'
-    elif bool(re.match(re.compile('Orion-login.+'), hostname)):
-        machine = 'orion'
-    elif bool(re.match(re.compile('chadmin.+'), hostname)):
-        machine = 'cheyenne'
-        os.environ['ACCNR'] = 'P48503002'
+    config = config_parser()
+
+    # Pull machine specific values from a config file
+    # Only very specific values will work - see docs
+
+    file_name = 'CImachine.cfg'
+    if not os.path.exists(file_name):
+        logger.info(f'Could not find {file_name}')
+        raise KeyError(f'Machine config file {file_name} '
+                       'not found. Exiting.')
     else:
-        raise KeyError(f'Hostname: {hostname} does not match '
-                       'for a supported system. Exiting.')
+        machine_dict = {}
+        config.read(file_name)
+        machine_dict['machine'] = config['DEFAULT']['machine']
+        machine_dict['hpc_acc'] = config['DEFAULT']['hpc_acc']
+        machine_dict['workdir'] = config['DEFAULT']['workdir']
+
+    if not os.path.exists(machine_dict['workdir']):
+        raise KeyError(f'Work directory from config file '
+                       f'{machine_dict["workdir"]} not found. Exiting.')
 
     # Build dictionary of GitHub repositories to check
     # from config file. Workflow repo matched to app repo
-    config = config_parser()
+
     file_name = 'CIrepos.cfg'
     if not os.path.exists(file_name):
-        logger.info('Could not find CIrepos.cfg')
+        logger.info(f'Could not find {file_name}')
+        raise KeyError(f'Repo config file {file_name} '
+                       'not found. Exiting.')
     else:
         repo_dict = []
         config.read(file_name)
@@ -266,7 +267,7 @@ def setup_env():
     # Approved Actions
     action_list = ['build', 'WE']
 
-    return machine, repo_dict, action_list, hpc_acc
+    return machine_dict, repo_dict, action_list
 
 
 def main():
@@ -281,7 +282,7 @@ def main():
 
     # setup environment
     logger.info('Getting the environment setup')
-    machine, repos, actions, hpc_acc = setup_env()
+    machine_dict, repos, actions = setup_env()
 
     # setup interface with GitHub
     logger.info('Setting up GitHub interface.')
@@ -291,8 +292,8 @@ def main():
     # and turn them into Job objects
     logger.info('Getting all pull requests, '
                 'labels and actions applicable to this machine.')
-    jobs = get_preqs_with_actions(repos, machine,
-                                  ghinterface_obj, actions, hpc_acc)
+    jobs = get_preqs_with_actions(repos, machine_dict,
+                                  ghinterface_obj, actions)
     [job.run() for job in jobs]
 
     logger.info('Script Finished')
