@@ -29,7 +29,7 @@ def run(job_obj):
         job_obj.comment_append('Build was Successful')
         if job_obj.preq_dict["action"] == 'WE':
             expt_script_loc = pr_repo_loc + '/regional_workflow/tests/WE2E'
-            expt_dirs = repo_dir_str + '/expt_dirs'
+            expts_base_dir = os.path.join(repo_dir_str, 'expt_dirs')
             log_name = 'expt.out'
             we2e_script = expt_script_loc + '/end_to_end_tests.sh'
             if os.path.exists(we2e_script):
@@ -40,9 +40,9 @@ def run(job_obj):
                       f'{log_name}', expt_script_loc]]
                 job_obj.run_commands(logger, create_expt_commands)
                 logger.info('After end_to_end script')
-                if os.path.exists(expt_dirs):
+                if os.path.exists(expts_base_dir):
                     job_obj.comment_append('Rocoto jobs started')
-                    process_expt(job_obj, expt_dirs)
+                    process_expt(job_obj, expts_base_dir)
                 else:
                     gen_log_loc = pr_repo_loc + '/regional_workflow/ush'
                     gen_log_name = 'log.generate_FV3LAM_wflow'
@@ -117,8 +117,12 @@ def clone_pr_repo(job_obj, workdir):
     new_repo = job_obj.preq_dict['preq'].head.repo.full_name
     new_branch = job_obj.preq_dict['preq'].head.ref
     # These are for the default app repo that goes with the workflow
-    auth_repo = job_obj.repo["app_address"]
-    auth_branch = job_obj.repo["app_branch"]
+    try:
+        auth_repo = job_obj.repo["app_address"]
+        auth_branch = job_obj.repo["app_branch"]
+    except Exception as e:
+        logger.info('Error getting app address and branch from config dict')
+        job_obj.job_failed(logger, 'clone_pr_repo', exception=e)
     app_name = auth_repo.split("/")[1]
     # The new repo is the default repo
     git_url = f'https://${{ghapitoken}}@github.com/{new_repo}'
@@ -255,7 +259,7 @@ def process_gen(job_obj, gen_log_loc, gen_log_name):
                     job_obj.comment_append(f'{line.rstrip()}')
 
 
-def process_expt(job_obj, expt_dirs):
+def process_expt(job_obj, expts_base_dir):
     """
     Runs after a rocoto workflow has been started to run one or more expts
     Assumes that more expt directories can appear after this job has started
@@ -268,18 +272,19 @@ def process_expt(job_obj, expt_dirs):
     sleep_time = 360
     repeat_count = time_mult
     complete_expts = []
-    expt_list = os.listdir(expt_dirs)
+    expt_list = os.listdir(expts_base_dir)
     complete_string = "This cycle is complete"
     failed_string = "FAILED"
 
     while (expt_done < len(expt_list)) and repeat_count > 0:
         time.sleep(sleep_time)
         repeat_count = repeat_count - 1
-        expt_list = os.listdir(expt_dirs)
+        expt_list = os.listdir(expts_base_dir)
         logger.info('Experiment dir after return of end_to_end')
         logger.info(expt_list)
         for expt in expt_list:
-            expt_log = os.path.join(expt_dirs, expt, 'log/FV3LAM_wflow.log')
+            expt_log = os.path.join(expts_base_dir, expt, 
+                                    'log/FV3LAM_wflow.log')
             if os.path.exists(expt_log) and expt not in complete_expts:
                 with open(expt_log) as fname:
                     for line in fname:
