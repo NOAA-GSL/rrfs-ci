@@ -71,41 +71,50 @@ def main():
 
     config.read(file_name)
     num_sections = len(config.sections())
+    logger.info(f'Experiments running: {num_sections}')
+    
     # Words to search for in log to signal success or failure
     complete_string = "This cycle is complete"
     failed_string = "FAILED"
-    expt_done = 0
+    expt_done_count = 0
 
     for ci_log in config.sections():
         logger.info(f'{ci_log}: {config[ci_log]["pr_repo"]}')
         if os.path.exists(ci_log):
             pr_comment = ''
+            expt_done = False
             expt = config[ci_log]["expt"]
             pr_num = int(config[ci_log]["pr_num"])
             repo = ghinterface_obj.client.get_repo(config[ci_log]["pr_repo"])
             pr = repo.get_pull(pr_num)
             with open(ci_log) as fname:
                 for line in fname:
+                    expt_string = ''
                     if complete_string in line:
-                        expt_done = expt_done + 1
-                        newtext = f'Experiment Succeeded: {expt}'
+                        expt_string = "Succeeded"
+                    else:
+                        if failed_string in line:
+                            expt_string = "Failed"
+                    if expt_string:
+                        expt_done = True
+                        newtext = f'Experiment {expt_string}: {expt}'
                         pr_comment += f'{newtext}\n'
                         newtext = f'{line.rstrip()}'
                         pr_comment += f'{newtext}\n'
-                        logger.info(f'Experiment Succeeded: {expt}')
-                        pr.create_issue_comment(pr_comment)
-                    else:
-                        if failed_string in line:
-                            expt_done = expt_done + 1
-                            newtext = f'Experiment Failed: {expt}'
-                            pr_comment += f'{newtext}\n'
-                            newtext = f'{line.rstrip()}'
-                            pr_comment += f'{newtext}\n'
-                            logger.info(f'Experiment Failed: {expt}')
-                            pr.create_issue_comment(pr_comment)
-
-        logger.info(f'Experiments Completed: {str(expt_done)}')
-
+                        pr.create_issue_comment(pr_comment)                        
+                        logger.info(f'Experiment {expt_string}: {expt}')
+            if expt_done:
+                expt_done_count = expt_done_count + 1
+                config.remove_section(ci_log)
+    logger.info(f'Experiments Completed: {str(expt_done_count)}')
+    
+    if expt_done_count == num_sections:
+        # Delete the file if all experiments are done
+        os.remove(file_name)
+    else:
+        # Write out the file with completed experiments removed
+        with open(file_name, 'w') as fname:
+            config.write(fname)
 
 if __name__ == '__main__':
     main()
