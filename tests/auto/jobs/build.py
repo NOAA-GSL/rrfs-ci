@@ -39,7 +39,9 @@ def run(job_obj):
                       f'{log_name}', expt_script_loc]]
                 job_obj.run_commands(logger, create_expt_commands)
                 logger.info('After end_to_end script')
-                if os.path.exists(expts_base_dir):
+                # no experiment dir or no test dirs in it suggests error
+                if os.path.exists(expts_base_dir) and \
+                   len(os.listdir(expts_base_dir)):
                     job_obj.comment_append('Rocoto jobs started')
                     process_expt(job_obj, expts_base_dir)
                 else:
@@ -272,3 +274,24 @@ def process_expt(job_obj, expts_base_dir):
                                 complete_expts.append(expt)
     logger.info(f'Wait Cycles completed: {time_mult - repeat_count}')
     job_obj.comment_append(f'Done: {len(complete_expts)} of {len(expt_list)}')
+    
+    # If not all experiments completed, writes a list in a config file
+    if len(complete_expts) < len(expt_list):
+        job_obj.comment_append('Long term tracking will be done')
+        undone = list(set(expt_list) - set(complete_expts))
+        config = config_parser()
+        file_name = 'Longjob.cfg'
+        if os.path.exists(file_name):
+            config.read(file_name)
+        for expt in undone:
+            expt_log = os.path.join(expts_base_dir, expt,
+                                    'log/FV3LAM_wflow.log')
+            logger.info(f'expt log: {expt_log}')
+            pr_repo = job_obj.repo["address"]
+            pr_num = job_obj.preq_dict['preq'].number
+            config[expt_log] = {}
+            config[expt_log]['expt'] = expt
+            config[expt_log]['pr_repo'] = pr_repo
+            config[expt_log]['pr_num'] = str(pr_num)
+        with open(file_name, 'w') as fname:
+            config.write(fname)
