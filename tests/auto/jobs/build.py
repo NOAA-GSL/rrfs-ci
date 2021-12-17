@@ -1,3 +1,9 @@
+"""
+Name: build.py
+Python to clone and build a repo and if requested run
+End to End workflow tests.
+"""
+
 # Imports
 import datetime
 import logging
@@ -57,27 +63,6 @@ def run(job_obj):
     job_obj.send_comment_text()
 
 
-def run_regression_test(job_obj, pr_repo_loc):
-    logger = logging.getLogger('BUILD/RUN_REGRESSION_TEST')
-    if job_obj.compiler == 'gnu':
-        rt_command = [[f'export RT_COMPILER="{job_obj.compiler}" && cd tests '
-                       '&& /bin/bash --login ./rt.sh -e -c -l rt_gnu.conf',
-                       pr_repo_loc]]
-    elif job_obj.compiler == 'intel':
-        rt_command = [[f'export RT_COMPILER="{job_obj.compiler}" && cd tests '
-                       '&& /bin/bash --login ./rt.sh -e -c', pr_repo_loc]]
-    job_obj.run_commands(logger, rt_command)
-
-
-def remove_pr_data(job_obj, pr_repo_loc, repo_dir_str, rt_dir):
-    logger = logging.getLogger('BUILD/REMOVE_PR_DATA')
-    rm_command = [
-                 [f'rm -rf {rt_dir}', pr_repo_loc],
-                 [f'rm -rf {repo_dir_str}', pr_repo_loc]
-                 ]
-    job_obj.run_commands(logger, rm_command)
-
-
 def clone_pr_repo(job_obj, workdir):
     ''' clone the GitHub pull request repo, via command line '''
     logger = logging.getLogger('BUILD/CLONE_PR_REPO')
@@ -132,34 +117,35 @@ def clone_pr_repo(job_obj, workdir):
     config = config_parser()
     file_name = 'Externals.cfg'
     file_path = os.path.join(pr_repo_loc, file_name)
+
     if not os.path.exists(file_path):
-        logger.info('Could not find Externals.cfg')
+        logger.info(f'Could not find {file_path}')
         raise FileNotFoundError
-    else:
-        # Only update Externals.cfg for a PR on a regional workflow
-        if new_name != app_name:
-            config.read(file_path)
-            updated_section = new_name
-            logger.info(f'updated section: {updated_section}')
-            new_repo = "https://github.com/" + \
-                job_obj.preq_dict['preq'].head.repo.full_name
-            logger.info(f'new repo: {new_repo}')
 
-            if config.has_section(updated_section):
+    # Only update Externals.cfg for a PR on a regional workflow
+    if new_name != app_name:
+        config.read(file_path)
+        updated_section = new_name
+        logger.info(f'updated section: {updated_section}')
+        new_repo = "https://github.com/" + \
+            job_obj.preq_dict['preq'].head.repo.full_name
+        logger.info(f'new repo: {new_repo}')
 
-                config.set(updated_section, 'hash',
-                           job_obj.preq_dict['preq'].head.sha)
-                config.set(updated_section, 'repo_url', new_repo)
-                # Can only have one of hash, branch, tag
-                if config.has_option(updated_section, 'branch'):
-                    config.remove_option(updated_section, 'branch')
-                if config.has_option(updated_section, 'tag'):
-                    config.remove_option(updated_section, 'tag')
-                # open existing Externals.cfg to update it
-                with open(file_path, 'w') as fname:
-                    config.write(fname)
-            else:
-                logger.info('No section {updated_section} in Externals.cfg')
+        if config.has_section(updated_section):
+
+            config.set(updated_section, 'hash',
+                       job_obj.preq_dict['preq'].head.sha)
+            config.set(updated_section, 'repo_url', new_repo)
+            # Can only have one of hash, branch, tag
+            if config.has_option(updated_section, 'branch'):
+                config.remove_option(updated_section, 'branch')
+            if config.has_option(updated_section, 'tag'):
+                config.remove_option(updated_section, 'tag')
+            # open existing Externals.cfg to update it
+            with open(file_path, 'w') as fname:
+                config.write(fname)
+        else:
+            logger.info('No section {updated_section} in Externals.cfg')
 
     # call manage externals to get other repos
     logger.info('Starting manage externals')
@@ -238,8 +224,8 @@ def process_expt(job_obj, expts_base_dir):
     logger = logging.getLogger('BUILD/PROCESS_EXPT')
     expt_done = 0
     # wait time for workflow is time_mult * sleep_time seconds
-    time_mult = 60
-    sleep_time = 360
+    time_mult = 2
+    sleep_time = 6
     repeat_count = time_mult
     complete_expts = []
     expt_list = os.listdir(expts_base_dir)
@@ -274,7 +260,7 @@ def process_expt(job_obj, expts_base_dir):
                                 complete_expts.append(expt)
     logger.info(f'Wait Cycles completed: {time_mult - repeat_count}')
     job_obj.comment_append(f'Done: {len(complete_expts)} of {len(expt_list)}')
-    
+
     # If not all experiments completed, writes a list in a config file
     if len(complete_expts) < len(expt_list):
         job_obj.comment_append('Long term tracking will be done')

@@ -1,6 +1,8 @@
 """
+Name: ci_long.py
 This Python program reads a config file that has information
-on End to End workflow tests that were not completed.
+on End to End workflow tests that were not completed, and
+returns status information.
 """
 
 from github import Github as gh
@@ -72,7 +74,7 @@ def main():
     config.read(file_name)
     num_sections = len(config.sections())
     logger.info(f'Experiments running: {num_sections}')
-    
+
     # Words to search for in log to signal success or failure
     complete_string = "This cycle is complete"
     failed_string = "FAILED"
@@ -101,13 +103,13 @@ def main():
                         pr_comment += f'{newtext}\n'
                         newtext = f'{line.rstrip()}'
                         pr_comment += f'{newtext}\n'
-                        pr.create_issue_comment(pr_comment)                        
+                        pr.create_issue_comment(pr_comment)
                         logger.info(f'Experiment {expt_string}: {expt}')
             if expt_done:
                 expt_done_count = expt_done_count + 1
                 config.remove_section(ci_log)
     logger.info(f'Experiments Completed: {str(expt_done_count)}')
-    
+
     if expt_done_count == num_sections:
         # Delete the file if all experiments are done
         os.remove(file_name)
@@ -115,6 +117,7 @@ def main():
         # Write out the file with completed experiments removed
         with open(file_name, 'w') as fname:
             config.write(fname)
+
 
 if __name__ == '__main__':
     main()
