@@ -1,6 +1,8 @@
 #!/bin/bash --login
 set -eux
 
+pypro = $1
+
 if [[ $HOSTNAME == hfe* ]]; then
   module use -a /contrib/miniconda3/modulefiles
   module load miniconda3
@@ -26,6 +28,6 @@ else
   exit 1
 fi
 
-python ci_auto.py
+python ${pypro}
 
 exit 0

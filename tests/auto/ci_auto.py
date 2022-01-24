@@ -5,7 +5,7 @@ Automation of UFS Regression Testing for ufs-weather-model
 This script automates the process of UFS CI for
 code managers at NOAA-EMC
 
-This script should be started through start_ci_auto.sh so that
+This script should be started through start_ci_py_pro.sh so that
 env vars and Python paths are set up prior to start.
 """
 from github import Github as gh
@@ -14,9 +14,12 @@ import datetime
 import subprocess
 import re
 import os
+import sys
 import logging
 from configparser import ConfigParser as config_parser
+from pathlib import Path
 import importlib
+import argparse
 
 
 class GHInterface:
@@ -279,6 +282,15 @@ def main():
                         level=logging.INFO)
     logger = logging.getLogger('MAIN')
     logger.info('Starting Script')
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("testfile",
+                        help="Please provide required tests filename")
+
+    # get the command line arguments
+    args = parser.parse_args()
+    if not Path(args.testfile).is_file():
+        sys.exit("*** Tests file " + args.testfile + " cannot be found!")
 
     # setup environment
     logger.info('Getting the environment setup')
