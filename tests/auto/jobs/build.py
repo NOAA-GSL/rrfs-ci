@@ -22,7 +22,8 @@ def run(job_obj):
     os.environ['SR_WX_APP_TOP_DIR'] = pr_repo_loc
     build_script_loc = pr_repo_loc + '/test'
     log_name = 'build.out'
-    create_build_commands = [[f'./build.sh {job_obj.machine} >& {log_name}',
+    create_build_commands = [[f'./build.sh {job_obj.machine} '
+                              f'{job_obj.machine} >& {log_name}',
                              build_script_loc]]
     logger.info('Running test build script')
     job_obj.run_commands(logger, create_build_commands)
@@ -36,7 +37,7 @@ def run(job_obj):
             expt_script_loc = pr_repo_loc + '/regional_workflow/tests/WE2E'
             expts_base_dir = os.path.join(repo_dir_str, 'expt_dirs')
             log_name = 'expt.out'
-            we2e_script = expt_script_loc + '/end_to_end_tests.sh'
+            we2e_script = expt_script_loc + '/setup_WE2E_tests.sh'
             if os.path.exists(we2e_script):
                 logger.info('Running end to end test')
                 create_expt_commands = \
