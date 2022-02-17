@@ -70,9 +70,8 @@ def main():
 
     file_name = 'Longjob.cfg'
     if not os.path.exists(file_name):
-        logger.info(f'Could not find {file_name}')
-        raise KeyError(f'Machine config file {file_name} '
-                       'not found. Exiting.')
+        logger.info(f'Could not find {file_name}. Exiting.')
+        quit()
 
     config.read(file_name)
     num_sections = len(config.sections())
@@ -89,6 +88,7 @@ def main():
             pr_comment = ''
             expt_done = False
             expt = config[ci_log]["expt"]
+            machine = config[ci_log]["machine"]
             pr_num = int(config[ci_log]["pr_num"])
             repo = ghinterface_obj.client.get_repo(config[ci_log]["pr_repo"])
             pr = repo.get_pull(pr_num)
@@ -102,7 +102,9 @@ def main():
                             expt_string = "Failed"
                     if expt_string:
                         expt_done = True
-                        newtext = f'Experiment {expt_string}: {expt}'
+                        newtext = f'Experiment {expt_string} '
+                        pr_comment += f'{newtext}'
+                        newtext = f'on {machine}: {expt}'
                         pr_comment += f'{newtext}\n'
                         newtext = f'{line.rstrip()}'
                         pr_comment += f'{newtext}\n'

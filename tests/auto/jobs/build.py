@@ -40,7 +40,7 @@ def run(job_obj):
             if os.path.exists(we2e_script):
                 logger.info('Running end to end test')
                 create_expt_commands = \
-                    [[f'./end_to_end_tests.sh {job_obj.machine} '
+                    [[f'./setup_WE2E_tests.sh {job_obj.machine} '
                       f'{job_obj.hpc_acc} >& '
                       f'{log_name}', expt_script_loc]]
                 job_obj.run_commands(logger, create_expt_commands)
@@ -162,8 +162,7 @@ def post_process(job_obj, build_script_loc, log_name):
     logger = logging.getLogger('BUILD/POST_PROCESS')
     ci_log = f'{build_script_loc}/{log_name}'
     logfile_pass = process_logfile(job_obj, ci_log)
-    logger.info('Log file was processed')
-    logger.info(f'Status of build: {logfile_pass}')
+    logger.info('Build log file was processed')
 
     return logfile_pass
 
@@ -175,19 +174,23 @@ def process_logfile(job_obj, ci_log):
     """
     logger = logging.getLogger('BUILD/PROCESS_LOGFILE')
     fail_string = 'FAIL'
-    build_failed = False
+    success_string = 'ALL BUILDS SUCCEEDED'
+    build_succeeded = False
     if os.path.exists(ci_log):
         with open(ci_log) as fname:
             for line in fname:
                 if fail_string in line:
-                    build_failed = True
                     job_obj.comment_append(f'{line.rstrip()}')
-        if build_failed:
-            job_obj.send_comment_text()
-            logger.info('Build failed')
-        else:
+                elif success_string in line:
+                    build_succeeded = True
+        if build_succeeded:
             logger.info('Build was successful')
-        return not build_failed
+        else:
+            logger.info('Build failed')
+            job_obj.comment_append('Build failed')
+            raise Exception('Build failed abruptly ')
+
+        return build_succeeded
     else:
         logger.critical(f'Could not find {job_obj.machine}'
                         f'.{job_obj.compiler} '
@@ -250,14 +253,13 @@ def process_expt(job_obj, expts_base_dir):
                             job_obj.comment_append(f'{line.rstrip()}')
                             logger.info(f'Experiment done: {expt}')
                             complete_expts.append(expt)
-                        else:
-                            if failed_string in line:
-                                expt_done = expt_done + 1
-                                job_obj.comment_append('Experiment failed: '
-                                                       f'{expt}')
-                                job_obj.comment_append(f'{line.rstrip()}')
-                                logger.info(f'Experiment failed: {expt}')
-                                complete_expts.append(expt)
+                        elif failed_string in line:
+                            expt_done = expt_done + 1
+                            job_obj.comment_append('Experiment failed: '
+                                                   f'{expt}')
+                            job_obj.comment_append(f'{line.rstrip()}')
+                            logger.info(f'Experiment failed: {expt}')
+                            complete_expts.append(expt)
     logger.info(f'Wait Cycles completed: {time_mult - repeat_count}')
     job_obj.comment_append(f'Done: {len(complete_expts)} of {len(expt_list)}')
 
@@ -277,6 +279,7 @@ def process_expt(job_obj, expts_base_dir):
             pr_num = job_obj.preq_dict['preq'].number
             config[expt_log] = {}
             config[expt_log]['expt'] = expt
+            config[expt_log]['machine'] = job_obj.machine
             config[expt_log]['pr_repo'] = pr_repo
             config[expt_log]['pr_num'] = str(pr_num)
         with open(file_name, 'w') as fname:
