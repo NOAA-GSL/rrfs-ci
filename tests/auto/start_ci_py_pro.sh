@@ -23,10 +23,10 @@ machines=( "hera jet" )
 [[ $# -lt 2 ]] && usage 
 if [ "$1" = "-h" ] ; then usage ; fi
 
-export machine=$1
+machine=$1
 machine=$(echo "${machine}" | tr '[A-Z]' '[a-z]')  # need lower case machine name
 
-export py_prog=$2
+py_prog=$2
 
 if [[ ${machine} == hera ]]; then
   module use -a /contrib/miniconda3/modulefiles
