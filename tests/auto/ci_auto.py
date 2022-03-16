@@ -58,7 +58,6 @@ def set_action_from_label(machine, actions, label):
         Labels have a ci- prefix'''
     # ci-<machine>-<compiler>-<test> i.e. ci-hera-intel-build
     logger = logging.getLogger('MATCH_LABEL_WITH_ACTIONS')
-    logger.info('Setting action from Label {label}')
     # split the label apart and remove its prefix
     split_label = label.name.split('-')[1:]
     # Make sure it has three parts
@@ -72,10 +71,10 @@ def set_action_from_label(machine, actions, label):
     # Compiler must be intel or gnu
     if not str(label_compiler) in ["intel", "gnu"]:
         return False, False
+    logger.info(f'Setting action from Label {label}')
     action_match = next((action for action in actions
                          if re.match(action, label_action)), False)
 
-    logger.info(f'Compiler: {label_compiler}, Action: {action_match}')
     return label_compiler, action_match
 
 
@@ -194,7 +193,8 @@ class Job:
             except Exception:
                 self.job_failed(logger, 'run()')
                 logger.info('Sending comment text')
-                self.send_comment_text()
+                issue_id = self.send_comment_text()
+                logger.debug(f'Issue comment id is {issue_id}')
         else:
             logger.info(f'Cannot find label {self.preq_dict["label"]}')
 
@@ -207,7 +207,9 @@ class Job:
                             f'-{self.compiler}'
                             f'-{self.preq_dict["action"]}')
 
-        self.preq_dict['preq'].create_issue_comment(self.comment_text)
+        issue_id = \
+            self.preq_dict['preq'].create_issue_comment(self.comment_text)
+        return(issue_id)
 
     def job_failed(self, logger, job_name, exception=Exception, STDOUT=False,
                    out=None, err=None):

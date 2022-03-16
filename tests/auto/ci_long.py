@@ -82,14 +82,15 @@ def main():
     failed_string = "FAILED"
     expt_done_count = 0
 
+    pr_comment = ''
     for ci_log in config.sections():
         logger.info(f'{ci_log}: {config[ci_log]["pr_repo"]}')
         if os.path.exists(ci_log):
-            pr_comment = ''
             expt_done = False
             expt = config[ci_log]["expt"]
             machine = config[ci_log]["machine"]
             pr_num = int(config[ci_log]["pr_num"])
+            issue_id = int(config[ci_log]["issue_id"])
             repo = ghinterface_obj.client.get_repo(config[ci_log]["pr_repo"])
             pr = repo.get_pull(pr_num)
             with open(ci_log) as fname:
@@ -106,22 +107,26 @@ def main():
                         pr_comment += f'{newtext}'
                         newtext = f'on {machine}: {expt}'
                         pr_comment += f'{newtext}\n'
-                        newtext = f'{line.rstrip()}'
-                        pr_comment += f'{newtext}\n'
-                        pr.create_issue_comment(pr_comment)
+                        if expt_string == "Failed":
+                            newtext = f'{line.rstrip()}'
+                            pr_comment += f'{newtext}\n'
                         logger.info(f'Experiment {expt_string}: {expt}')
             if expt_done:
                 expt_done_count = expt_done_count + 1
                 config.remove_section(ci_log)
     logger.info(f'Experiments Completed: {str(expt_done_count)}')
 
-    if expt_done_count == num_sections:
-        # Delete the file if all experiments are done
-        os.remove(file_name)
-    else:
-        # Write out the file with completed experiments removed
-        with open(file_name, 'w') as fname:
-            config.write(fname)
+    if expt_done_count:
+        issue_comm = pr.get_issue_comment(id=issue_id)
+        issue_text = issue_comm.body
+        if expt_done_count == num_sections:
+            os.remove(file_name)
+            pr_comment += 'All experiments completed\n'
+        else:
+            # Write out the file with completed experiments removed
+            with open(file_name, 'w') as fname:
+                config.write(fname)
+        issue_comm.edit(issue_text + pr_comment)
 
 
 if __name__ == '__main__':

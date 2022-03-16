@@ -33,6 +33,8 @@ def run(job_obj):
     build_success = post_process(job_obj, build_script_loc, log_name)
     logger.info('After build post-processing')
     logger.info(f'Action: {job_obj.preq_dict["action"]}')
+    # Comments have not yet been written
+    issue_id = 0
     if build_success:
         job_obj.comment_append('Build was Successful')
         if job_obj.preq_dict["action"] == 'WE':
@@ -52,7 +54,8 @@ def run(job_obj):
                 if os.path.exists(expts_base_dir) and \
                    len(os.listdir(expts_base_dir)):
                     job_obj.comment_append('Rocoto jobs started')
-                    process_expt(job_obj, expts_base_dir)
+                    # If workflow running, comments will be written
+                    issue_id = process_expt(job_obj, expts_base_dir)
                 else:
                     gen_log_loc = pr_repo_loc + '/regional_workflow/ush'
                     gen_log_name = 'log.generate_FV3LAM_wflow'
@@ -63,7 +66,11 @@ def run(job_obj):
                 job_obj.comment_append('Cannot run WE2E tests')
     else:
         job_obj.comment_append('Build Failed')
-    job_obj.send_comment_text()
+
+    # Only write out comments if not already written after workflow running
+    if issue_id == 0:
+        issue_id = job_obj.send_comment_text()
+        logger.debug(f'Issue comment id is {issue_id}')
 
 
 def clone_pr_repo(job_obj, workdir):
@@ -238,6 +245,9 @@ def process_expt(job_obj, expts_base_dir):
     complete_string = "This cycle is complete"
     failed_string = "FAILED"
 
+    # Set issue id for cases where workflow does not start
+    issue_id = 0
+
     while (expt_done < len(expt_list)) and repeat_count > 0:
         time.sleep(sleep_time)
         repeat_count = repeat_count - 1
@@ -264,11 +274,17 @@ def process_expt(job_obj, expts_base_dir):
                             logger.info(f'Experiment failed: {expt}')
                             complete_expts.append(expt)
     logger.info(f'Wait Cycles completed: {time_mult - repeat_count}')
-    job_obj.comment_append(f'Done: {len(complete_expts)} of {len(expt_list)}')
+    logger.info(f'Done: {len(complete_expts)} of {len(expt_list)}')
 
     # If not all experiments completed, writes a list in a config file
     if len(complete_expts) < len(expt_list):
-        job_obj.comment_append('Long term tracking will be done')
+        job_obj.comment_append(f'Long term tracking will be done'
+                               f' on {len(expt_list)} experiments')
+
+        # Write out comments so far and save issue id for later appending
+        issue_id = job_obj.send_comment_text()
+        logger.debug(f'Issue comment id is {issue_id}')
+
         undone = list(set(expt_list) - set(complete_expts))
         config = config_parser()
         file_name = 'Longjob.cfg'
@@ -285,5 +301,8 @@ def process_expt(job_obj, expts_base_dir):
             config[expt_log]['machine'] = job_obj.machine
             config[expt_log]['pr_repo'] = pr_repo
             config[expt_log]['pr_num'] = str(pr_num)
+            config[expt_log]['issue_id'] = str(issue_id.id)
         with open(file_name, 'w') as fname:
             config.write(fname)
+
+    return issue_id
