@@ -244,7 +244,7 @@ def process_expt(job_obj, expts_base_dir):
     complete_expts = []
     expt_list = os.listdir(expts_base_dir)
     complete_string = "This cycle is complete"
-    failed_string = "FAILED"
+    failed_string = "DEAD"
 
     # Set issue id for cases where workflow does not start
     issue_id = 0
