@@ -38,6 +38,25 @@ def run(job_obj):
     if build_success:
         job_obj.comment_append('Build was Successful')
         if job_obj.preq_dict["action"] == 'WE':
+            # See if a previous job on same PR is still running
+            cfg_file = 'Longjob.cfg'
+            # See if there are any tests already running for this PR
+            if os.path.exists(cfg_file):
+                config = config_parser()
+                config.read(cfg_file)
+                num_sections = len(config.sections())
+                num_tests = 0
+                # Remove any older tests with the same PR ID
+                for ci_log in config.sections():
+                    if str(job_obj.preq_dict["preq"].id) in ci_log:
+                        num_tests = num_tests + 1
+                        config.remove_section(ci_log)
+                # If those were the only tests, delete the file
+                if num_sections == num_tests:
+                    os.remove(cfg_file)
+                    # Still need to remove cron jobs and maybe output dirs
+                    # Maybe write a message to PR (older issue id)
+            # Start the workflow process
             expt_script_loc = pr_repo_loc + '/regional_workflow/tests/WE2E'
             expts_base_dir = os.path.join(repo_dir_str, 'expt_dirs')
             log_name = 'expt.out'

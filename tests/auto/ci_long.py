@@ -79,7 +79,7 @@ def main():
 
     # Words to search for in log to signal success or failure
     complete_string = "This cycle is complete"
-    failed_string = "FAILED"
+    failed_string = "DEAD"
     expt_done_count = 0
 
     pr_comment = ''
