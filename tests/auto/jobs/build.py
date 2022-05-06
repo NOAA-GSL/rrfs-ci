@@ -22,8 +22,7 @@ def run(job_obj):
     os.environ['SR_WX_APP_TOP_DIR'] = pr_repo_loc
     build_script_loc = pr_repo_loc + '/test'
     log_name = 'build.out'
-    # machine passed twice to work with both build script versions:
-    # passing in machine, and not erroring for only one arg
+    # passing in machine for build
     create_build_commands = [[f'./build.sh {job_obj.machine} '
                               f' >& {log_name}',
                              build_script_loc]]
