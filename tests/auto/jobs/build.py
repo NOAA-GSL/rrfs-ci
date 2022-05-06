@@ -25,7 +25,7 @@ def run(job_obj):
     # machine passed twice to work with both build script versions:
     # passing in machine, and not erroring for only one arg
     create_build_commands = [[f'./build.sh {job_obj.machine} '
-                              f'{job_obj.machine} >& {log_name}',
+                              f' >& {log_name}',
                              build_script_loc]]
     logger.info('Running test build script')
     job_obj.run_commands(logger, create_build_commands)
