@@ -75,6 +75,9 @@ def run(job_obj):
                     # If workflow running, comments will be written
                     issue_id = process_expt(job_obj, expts_base_dir)
                 else:
+                    setup_log = os.path.join(expt_script_loc, log_name)
+                    if os.path.exists(setup_log):
+                        process_setup(job_obj, setup_log)
                     gen_log_loc = pr_repo_loc + '/regional_workflow/ush'
                     gen_log_name = 'log.generate_FV3LAM_wflow'
                     process_gen(job_obj, gen_log_loc, gen_log_name)
@@ -224,6 +227,26 @@ def process_logfile(job_obj, ci_log):
                         f'.{job_obj.compiler} '
                         f'{job_obj.preq_dict["action"]} log')
         raise FileNotFoundError
+
+
+def process_setup(job_obj, setup_log):
+    """
+    Runs after setup for a rocoto workflow
+    Checks to see if an error has occurred
+    """
+    logger = logging.getLogger('BUILD/PROCESS_SETUP')
+    error_string = 'ERROR'
+    setup_failed = False
+    with open(setup_log) as fname:
+        for line in fname:
+            if error_string in line:
+                job_obj.comment_append('Setup for Workflow Failed')
+                setup_failed = True
+                logger.info('Setup for workflow failed')
+            if setup_failed:
+                job_obj.comment_append(f'{line.rstrip()}')
+    if setup_failed:
+        raise Exception('Setup for workflow could not complete ')
 
 
 def process_gen(job_obj, gen_log_loc, gen_log_name):
