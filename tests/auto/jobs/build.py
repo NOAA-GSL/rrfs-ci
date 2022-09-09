@@ -56,7 +56,7 @@ def run(job_obj):
                     # Still need to remove cron jobs and maybe output dirs
                     # Maybe write a message to PR (older issue id)
             # Start the workflow process
-            expt_script_loc = pr_repo_loc + '/regional_workflow/tests/WE2E'
+            expt_script_loc = pr_repo_loc + '/tests/WE2E'
             expts_base_dir = os.path.join(repo_dir_str, 'expt_dirs')
             log_name = 'expt.out'
             we2e_script = expt_script_loc + '/setup_WE2E_tests.sh'
@@ -78,7 +78,7 @@ def run(job_obj):
                     setup_log = os.path.join(expt_script_loc, log_name)
                     if os.path.exists(setup_log):
                         process_setup(job_obj, setup_log)
-                    gen_log_loc = pr_repo_loc + '/regional_workflow/ush'
+                    gen_log_loc = pr_repo_loc + '/ush'
                     gen_log_name = 'log.generate_FV3LAM_wflow'
                     process_gen(job_obj, gen_log_loc, gen_log_name)
             else:
