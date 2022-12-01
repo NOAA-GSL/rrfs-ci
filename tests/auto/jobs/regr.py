@@ -102,10 +102,6 @@ def clone_pr_repo(job_obj, workdir):
     # copy any extra or revised files needed
     logger.info('Starting file copies')
     create_repo_commands = [[f'cp -r {workdir}/vlab/GSI/fix/* fix/.',
-                             pr_repo_loc],
-                            [f'cp -r {workdir}/gsia/regression/regression_var.sh regression/.',
-                             pr_repo_loc],
-                            [f'cp -r {workdir}/gsia/regression/regression_driver.sh regression/.',
                              pr_repo_loc]]
     job_obj.run_commands(logger, create_repo_commands)
 
