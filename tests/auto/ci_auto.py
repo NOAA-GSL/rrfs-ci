@@ -2,6 +2,8 @@
 Revising this Python program to use for WE2E testing. It is based on:
 Automation of UFS Regression Testing for ufs-weather-model
 
+Oct 2022 - adding code to also automate GSI regression tests
+
 This script automates the process of UFS CI for
 code managers at NOAA-EMC
 
@@ -125,8 +127,12 @@ class Job:
                  repo):
         self.logger = logging.getLogger('JOB')
         self.preq_dict = preq_dict
-        # both build and WE2E tests call same module
-        self.job_mod = importlib.import_module('jobs.build')
+        # both SRWA build and WE2E tests call same module build.py
+        # GSI regression tests call regr.py
+        if self.preq_dict["action"] == "rt":
+            self.job_mod = importlib.import_module('jobs.regr')
+        else:
+            self.job_mod = importlib.import_module('jobs.build')
         self.ghinterface_obj = ghinterface_obj
         self.machine = machine_dict['machine']
         self.compiler = compiler
@@ -267,7 +273,7 @@ def setup_env():
             repo_dict.append(one_repo)
 
     # Approved Actions
-    action_list = ['build', 'WE']
+    action_list = ['build', 'WE', 'rt']
 
     return machine_dict, repo_dict, action_list
 
