@@ -52,7 +52,7 @@ class GHInterface:
             self.client = gh(os.getenv('ghapitoken'))
         except Exception as e:
             self.logger.critical(f'Exception is {e}')
-            raise(e)
+            raise (e)
 
 
 def set_action_from_label(machine, actions, label):
@@ -129,8 +129,13 @@ class Job:
         self.preq_dict = preq_dict
         # both SRWA build and WE2E tests call same module build.py
         # GSI regression tests call regr.py
+        # Weather Model can call rt or bl (UC in tag, lc in program name)
         if self.preq_dict["action"] == "rt":
             self.job_mod = importlib.import_module('jobs.regr')
+        elif self.preq_dict["action"] == "BL":
+            self.job_mod = importlib.import_module('jobs.bl')
+        elif self.preq_dict["action"] == "RT":
+            self.job_mod = importlib.import_module('jobs.rt')
         else:
             self.job_mod = importlib.import_module('jobs.build')
         self.ghinterface_obj = ghinterface_obj
@@ -177,6 +182,9 @@ class Job:
                     out, err = output.communicate()
                     out = [] if not out else out.decode('utf8').split('\n')
                     logger.info(out)
+                    if output.returncode != 0:
+                        err_msg = "Nonzero returncode: " + str(output.returncode)
+                        raise Exception(err_msg)
                 except Exception as e:
                     err = [] if not err else err.decode('utf8').split('\n')
                     self.job_failed(logger, f'Command {command}', exception=e,
@@ -215,7 +223,7 @@ class Job:
 
         issue_id = \
             self.preq_dict['preq'].create_issue_comment(self.comment_text)
-        return(issue_id)
+        return (issue_id)
 
     def job_failed(self, logger, job_name, exception=Exception, STDOUT=False,
                    out=None, err=None):
@@ -273,7 +281,7 @@ def setup_env():
             repo_dict.append(one_repo)
 
     # Approved Actions
-    action_list = ['build', 'WE', 'rt']
+    action_list = ['build', 'WE', 'rt', 'BL', 'RT']
 
     return machine_dict, repo_dict, action_list
 
