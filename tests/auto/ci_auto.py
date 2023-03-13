@@ -129,6 +129,7 @@ class Job:
         self.preq_dict = preq_dict
         # both SRWA build and WE2E tests call same module build.py
         # GSI regression tests call regr.py
+
         # Weather Model can call rt or bl (UC in tag, lc in program name)
         if self.preq_dict["action"] == "rt":
             self.job_mod = importlib.import_module('jobs.regr')
@@ -281,6 +282,7 @@ def setup_env():
             repo_dict.append(one_repo)
 
     # Approved Actions
+
     action_list = ['build', 'WE', 'rt', 'BL', 'RT']
 
     return machine_dict, repo_dict, action_list
