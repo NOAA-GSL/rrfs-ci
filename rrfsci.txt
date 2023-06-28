@@ -1,0 +1,58 @@
+There were 3 CI/CD automated test projects on 3 repositories (and sometimes on their NOAA-GSL equivalents):
+
+SRW https://github.com/ufs-community/ufs-srweather-app
+
+GSI https://github.com/NOAA-EMC/GSI
+
+Weather model https://github.com/ufs-community/ufs-weather-model
+
+The testing code for these projects is in:
+
+https://github.com/NOAA-GSL/rrfs-ci
+
+This CI/CD testing code was based on pre-existing regression testing done for the Weather model. This CI/CD testing was later replaced by testing in Jenkins by EPIC. 
+
+SRW and Wxmodel were for both Hera and Jet, and ran under role.rtrr (formerly rtrr). GSI was only on Hera, and ran under Venita.Hagerty due to issues with restricted data.
+
+Local files on Hera: /scratch1/BMC/zrtrr/rrfs_ci
+Local files on Jet: /lfs1/BMC/nrtrr/rrfs_ci
+
+Subdirectories in those directories:
+SRW: autoci and autoci/tests/auto
+GSI: gsi 
+Weather model: wxmodel and wxmodel/tests/auto
+
+For security reasons, GitHub cannot initiate actions with NOAA's HPC machines. Therefore, cron jobs were set up on Hera and Jet to run python programs that used the GitHub actions API to initiate actions with GitHub. Due to concerns of overuse of system resources, tests were triggered by a human adding a label to a PR in a designated repository. Each test for a repo had a file CIrepos.cfg that specified the repos and branches that would be checked for labels on PRs. Each test also had a file CImachine.cfg that specified the machine, account, and working directory.
+
+These were the crontab entries:
+
+Hera, role.rtrr
+
+5-59/15 * * * * cd /scratch1/BMC/zrtrr/rrfs_ci/autoci/tests/auto && /bin/bash --login start_ci_py_pro.sh hera ci_auto.py >> ci_auto.out 2>&1
+10-59/15 * * * * cd /scratch1/BMC/zrtrr/rrfs_ci/autoci/tests/auto && /bin/bash --login start_ci_py_pro.sh hera ci_long.py >> ci_long.out 2>&1
+15 11,23 * * * cd /scratch1/BMC/zrtrr/rrfs_ci/autoci/tests/auto && /bin/bash --login log_clean.sh >/dev/null 2>&1
+
+5-59/15 * * * * cd /scratch1/BMC/zrtrr/rrfs_ci/wxmodel/tests/auto && /bin/bash --login start_ci_py_pro.sh hera ci_auto.py >> ci_auto.out 2>&1
+15 11,23 * * * cd /scratch1/BMC/zrtrr/rrfs_ci/wxmodel/tests/auto && /bin/bash --login log_clean.sh >/dev/null 2>&1
+
+Hera, Venita
+
+5-59/15 * * * * cd /scratch1/BMC/zrtrr/rrfs_ci/gsi && /bin/bash --login start_ci_py_pro.sh hera ci_auto.py >> ci_auto.out 2>&1
+
+Jet, role.rtrr
+
+5-59/15 * * * * cd /lfs1/BMC/nrtrr/rrfs_ci/autoci/tests/auto && /bin/bash --login start_ci_py_pro.sh jet ci_auto.py >> ci_auto.out 2>&1
+10-59/15 * * * * cd /lfs1/BMC/nrtrr/rrfs_ci/autoci/tests/auto && /bin/bash --login start_ci_py_pro.sh jet ci_long.py >> ci_long.out 2>&1
+15 11,23 * * * cd /lfs1/BMC/nrtrr/rrfs_ci/autoci/tests/auto && /bin/bash --login log_clean.sh >/dev/null 2>&1
+
+5-59/15 * * * * cd /lfs1/BMC/nrtrr/rrfs_ci/wxmodel/tests/auto && /bin/bash --login start_ci_py_pro.sh jet ci_auto.py >> ci_auto.out 2>&1
+15 11,23 * * * cd /lfs1/BMC/nrtrr/rrfs_ci/wxmodel/tests/auto && /bin/bash --login log_clean.sh >/dev/null 2>&1
+
+Python programs were called by start_ci_py_pro.sh which set up Python packages and environmental variables before running the program. The program ci_auto.py started the tests. Some tests ran a long time, and ci_long.py was needed to keep checking on jobs and then report results when jobs finished. The file Lonjob.cfg was created to hold job information between the two programs. Results were written as comments to the PR. The shell program log_clean.sh was used to clean up logs.
+
+There was an option to just build, and another to first build and then run the tests. The program ci_auto.py parsed the labels on the PRs to call the correct program in the jobs subdirectory.
+
+Because the programs needed write access to a GitHub repo, an access token was kept in a file called "accesstoken". This token was for an individual developer who had write access to the repos.
+
+The pr subdirectory contained the job output, so that if the results messages added to the PR were not enough for debugging, more information could be obtained.
+
